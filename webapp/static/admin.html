@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DOOMDADA Admin Lobby</title>
+  <style>
+    :root {
+      --bg: #06090f;
+      --panel: #0d1520;
+      --text: #f8fafc;
+      --muted: #9fb0c0;
+      --accent: #8b5cf6;
+      --accent2: #22c55e;
+      --line: #283c4e;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--text);
+      font-family: Consolas, "Courier New", monospace;
+      background:
+        radial-gradient(circle at 80% 10%, #2d1450 0%, transparent 30%),
+        radial-gradient(circle at 10% 90%, #0f3c2f 0%, transparent 30%),
+        linear-gradient(145deg, #04060b, var(--bg));
+      padding: 20px;
+    }
+    .layout {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: grid;
+      gap: 16px;
+    }
+    .panel {
+      background: rgba(13, 21, 32, 0.94);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      box-shadow: 0 12px 34px rgba(0, 0, 0, 0.35);
+      overflow: hidden;
+    }
+    .panel .head {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(90deg, rgba(139, 92, 246, 0.2), rgba(34, 197, 94, 0.12));
+    }
+    .panel .body { padding: 16px; }
+    h1, h2, p { margin: 0; }
+    h1 { font-size: 1.3rem; color: #c4b5fd; }
+    .subtitle { margin-top: 8px; color: var(--muted); }
+    .row { display: grid; gap: 12px; grid-template-columns: 1fr auto; align-items: end; }
+    label { display: grid; gap: 8px; }
+    input, button {
+      font: inherit;
+      padding: 11px;
+      border-radius: 10px;
+      border: 1px solid #36526b;
+      background: #08121d;
+      color: var(--text);
+    }
+    .actions {
+      margin-top: 12px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    button {
+      border: 0;
+      font-weight: 700;
+      background: linear-gradient(120deg, #6d28d9, #7c3aed);
+      cursor: pointer;
+    }
+    button:hover { filter: brightness(1.08); }
+    .status {
+      margin-top: 12px;
+      border: 1px solid #2d4457;
+      border-radius: 10px;
+      background: #0a141f;
+      padding: 12px;
+      color: var(--muted);
+    }
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+    .metric {
+      border: 1px solid #2d4457;
+      border-radius: 10px;
+      background: #0a141f;
+      padding: 12px;
+      text-align: center;
+    }
+    .waiting { color: #facc15; }
+    .live { color: #22c55e; }
+    .metric span { color: var(--muted); font-size: 0.9rem; }
+    .metric strong { display: block; margin-top: 6px; font-size: 1.3rem; color: var(--accent2); }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.92rem;
+    }
+    th, td {
+      border-bottom: 1px solid #2a3f52;
+      padding: 10px;
+      text-align: left;
+    }
+    th { color: #c4b5fd; }
+    .mono { font-family: Consolas, "Courier New", monospace; letter-spacing: 1px; }
+    @media (max-width: 860px) {
+      .metrics { grid-template-columns: repeat(2, 1fr); }
+      .row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main class="layout">
+    <section class="panel">
+      <div class="head">
+        <h1>Admin Control - DOOMDADA Bootcamp</h1>
+        <p class="subtitle">Create lobby code and monitor all players/spectators in real time.</p>
+      </div>
+      <div class="body">
+        <div class="row">
+          <label>
+            Admin Name
+            <input id="adminName" maxlength="40" placeholder="e.g. Coach DOOM" />
+          </label>
+          <button id="createLobbyBtn">Create Lobby</button>
+        </div>
+        <div class="actions">
+          <button id="startGameBtn" disabled>Start Game</button>
+        </div>
+        <div id="status" class="status">No active lobby yet.</div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="head"><h2>Live Room Metrics</h2></div>
+      <div class="body">
+        <div class="metrics">
+          <div class="metric"><span>Room Code</span><strong id="roomCode" class="mono">-</strong></div>
+          <div class="metric"><span>Lobby Status</span><strong id="lobbyStatus" class="mono">WAITING</strong></div>
+          <div class="metric"><span>Total Visitors</span><strong id="totalVisitors">0</strong></div>
+          <div class="metric"><span>Players</span><strong id="players">0</strong></div>
+          <div class="metric"><span>Spectators</span><strong id="spectators">0</strong></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="head"><h2>Participants</h2></div>
+      <div class="body">
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Role</th>
+              <th>Joined (UTC)</th>
+            </tr>
+          </thead>
+          <tbody id="visitorTable">
+            <tr><td colspan="3">No participants yet.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const adminNameInput = document.getElementById("adminName");
+    const createLobbyBtn = document.getElementById("createLobbyBtn");
+    const startGameBtn = document.getElementById("startGameBtn");
+    const statusEl = document.getElementById("status");
+    const roomCodeEl = document.getElementById("roomCode");
+    const lobbyStatusEl = document.getElementById("lobbyStatus");
+    const totalVisitorsEl = document.getElementById("totalVisitors");
+    const playersEl = document.getElementById("players");
+    const spectatorsEl = document.getElementById("spectators");
+    const visitorTableEl = document.getElementById("visitorTable");
+    const API_BASE = window.location.protocol === "file:" ? "http://127.0.0.1:8000" : "";
+
+    let roomCode = "";
+    let adminToken = "";
+
+    function apiUrl(path) {
+      return `${API_BASE}${path}`;
+    }
+
+    async function readJsonSafe(res) {
+      const text = await res.text();
+      if (!text) {
+        return null;
+      }
+      try {
+        return JSON.parse(text);
+      } catch {
+        return { detail: text };
+      }
+    }
+
+    function setStatus(text) {
+      statusEl.textContent = text;
+    }
+
+    function paintTable(visitors) {
+      if (!visitors.length) {
+        visitorTableEl.innerHTML = '<tr><td colspan="3">No participants yet.</td></tr>';
+        return;
+      }
+      visitorTableEl.innerHTML = visitors.map(v => `
+        <tr>
+          <td>${v.name}</td>
+          <td>${v.role}</td>
+          <td>${v.joined_at}</td>
+        </tr>
+      `).join("");
+    }
+
+    function paintStats(data) {
+      roomCodeEl.textContent = data.room_code;
+      lobbyStatusEl.textContent = data.lobby_status.toUpperCase();
+      lobbyStatusEl.classList.toggle("waiting", data.lobby_status === "waiting");
+      lobbyStatusEl.classList.toggle("live", data.lobby_status === "live");
+      totalVisitorsEl.textContent = data.total_visitors;
+      playersEl.textContent = data.players;
+      spectatorsEl.textContent = data.spectators;
+      paintTable(Array.isArray(data.visitors) ? data.visitors : []);
+      startGameBtn.disabled = data.lobby_status === "live";
+    }
+
+    async function refreshAdminStats() {
+      if (!roomCode || !adminToken) return;
+      try {
+        const res = await fetch(apiUrl(`/api/lobby/${roomCode}/admin?token=${encodeURIComponent(adminToken)}`));
+        if (!res.ok) return;
+        const data = await res.json();
+        paintStats(data);
+      } catch {
+      }
+    }
+
+    createLobbyBtn.addEventListener("click", async () => {
+      const admin_name = adminNameInput.value.trim();
+      if (!admin_name) {
+        setStatus("Admin name is required.");
+        return;
+      }
+
+      createLobbyBtn.disabled = true;
+      setStatus("Creating lobby...");
+
+      try {
+        const res = await fetch(apiUrl("/api/admin/create"), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ admin_name })
+        });
+        const data = await readJsonSafe(res);
+
+        if (!res.ok) {
+          setStatus((data && data.detail) || `Could not create lobby (HTTP ${res.status}).`);
+          return;
+        }
+
+        if (!data || !data.room_code || !data.admin_token) {
+          setStatus("Unexpected server response while creating lobby.");
+          return;
+        }
+
+        roomCode = data.room_code;
+        adminToken = data.admin_token;
+        roomCodeEl.textContent = roomCode;
+        startGameBtn.disabled = false;
+        setStatus(`Lobby created: ${roomCode}. Share this with students: doomdada.com (room code ${roomCode}).`);
+        refreshAdminStats();
+      } catch (err) {
+        setStatus(`Network error while creating lobby: ${err && err.message ? err.message : "request failed"}`);
+      } finally {
+        createLobbyBtn.disabled = false;
+      }
+    });
+
+    startGameBtn.addEventListener("click", async () => {
+      if (!roomCode || !adminToken) {
+        setStatus("Create a lobby first.");
+        return;
+      }
+
+      startGameBtn.disabled = true;
+      setStatus("Starting game...");
+
+      try {
+        const res = await fetch(apiUrl(`/api/lobby/${roomCode}/start?token=${encodeURIComponent(adminToken)}`), {
+          method: "POST"
+        });
+        const data = await readJsonSafe(res);
+        if (!res.ok) {
+          setStatus((data && data.detail) || `Could not start game (HTTP ${res.status}).`);
+          startGameBtn.disabled = false;
+          return;
+        }
+
+        setStatus(`Game is LIVE in room ${roomCode}. New joins are now locked.`);
+        if (data.stats) {
+          paintStats(data.stats);
+        }
+      } catch (err) {
+        setStatus(`Network error while starting game: ${err && err.message ? err.message : "request failed"}`);
+        startGameBtn.disabled = false;
+      }
+    });
+
+    setInterval(refreshAdminStats, 2500);
+  </script>
+</body>
+</html>

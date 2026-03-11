@@ -1,0 +1,443 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DOOMDADA Lobby Join</title>
+  <style>
+    :root {
+      --bg: #070a0f;
+      --panel: #101722;
+      --text: #f8fafc;
+      --muted: #9fb0c0;
+      --accent: #22c55e;
+      --danger: #ff3f81;
+      --line: #274156;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Consolas, "Courier New", monospace;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 15% 10%, #12322f 0%, transparent 30%),
+        radial-gradient(circle at 80% 80%, #2c1533 0%, transparent 35%),
+        linear-gradient(140deg, #05070b, var(--bg));
+      display: grid;
+      place-items: center;
+      padding: 20px;
+    }
+    .panel {
+      width: min(720px, 100%);
+      background: rgba(13, 19, 29, 0.92);
+      border: 1px solid var(--line);
+      box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.3), 0 14px 40px rgba(0, 0, 0, 0.45);
+      border-radius: 14px;
+      overflow: hidden;
+    }
+    .header {
+      padding: 18px 20px;
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(90deg, rgba(34, 197, 94, 0.12), rgba(255, 63, 129, 0.12));
+    }
+    .header h1 { margin: 0; font-size: 1.2rem; color: var(--accent); }
+    .header p { margin: 8px 0 0; color: var(--muted); }
+    .body { padding: 20px; display: grid; gap: 14px; }
+    label { display: grid; gap: 8px; font-size: 0.95rem; }
+    input, select, button {
+      font: inherit;
+      border-radius: 10px;
+      border: 1px solid #2f4658;
+      background: #09111a;
+      color: var(--text);
+      padding: 12px;
+    }
+    input:focus, select:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.25);
+    }
+    button {
+      background: linear-gradient(120deg, #0f6f3b, #15924f);
+      border: 0;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    button:hover { filter: brightness(1.1); }
+    .status {
+      padding: 12px;
+      border-radius: 10px;
+      border: 1px solid #2a3f53;
+      background: #0a121b;
+      color: var(--muted);
+      min-height: 48px;
+    }
+    .status.error {
+      border-color: #793252;
+      color: #ffd4e4;
+      background: #27101a;
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+    .tile {
+      border: 1px solid #2a3f53;
+      border-radius: 10px;
+      padding: 10px;
+      background: #0a121b;
+      text-align: center;
+    }
+    .tile strong { display: block; font-size: 1.2rem; color: var(--accent); }
+    .game-panel {
+      border: 1px solid #2a3f53;
+      border-radius: 10px;
+      background: #0a121b;
+      padding: 12px;
+    }
+    .levels {
+      margin-top: 10px;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .level-card {
+      border: 1px solid #334a5e;
+      border-radius: 10px;
+      background: #0c1620;
+      padding: 10px;
+    }
+    .level-card h4 {
+      margin: 0;
+      color: #86efac;
+      font-size: 1rem;
+    }
+    .level-card p {
+      margin: 8px 0;
+      color: #b8c7d3;
+      font-size: 0.92rem;
+    }
+    .level-card .pts {
+      color: #facc15;
+      font-size: 0.9rem;
+      font-weight: 700;
+    }
+    .level-card button {
+      margin-top: 10px;
+      width: 100%;
+      background: linear-gradient(120deg, #0c4a6e, #0284c7);
+    }
+    .challenge-panel {
+      margin-top: 12px;
+      border: 1px solid #35556d;
+      border-radius: 10px;
+      background: #0c1622;
+      padding: 12px;
+      display: grid;
+      gap: 10px;
+    }
+    .challenge-panel h4 {
+      margin: 0;
+      color: #93c5fd;
+    }
+    .challenge-panel pre {
+      margin: 0;
+      border: 1px solid #2f4658;
+      border-radius: 8px;
+      background: #08111a;
+      color: #dbeafe;
+      padding: 10px;
+      white-space: pre-wrap;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 0.9rem;
+    }
+    .hidden { display: none; }
+    @media (max-width: 640px) {
+      .stats { grid-template-columns: 1fr; }
+      .levels { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <section class="panel">
+    <div class="header">
+      <h1>DOOMDADA Bootcamp Lobby</h1>
+      <p>Join with room code like Kahoot. Players and spectators can enter separately.</p>
+    </div>
+    <div class="body">
+      <label>
+        Room Code
+        <input id="roomCode" maxlength="8" placeholder="e.g. A1B2C3" />
+      </label>
+      <label>
+        Display Name
+        <input id="displayName" maxlength="40" placeholder="Your name" />
+      </label>
+      <label>
+        Join As
+        <select id="role">
+          <option value="player">Player</option>
+          <option value="spectator">Spectator</option>
+        </select>
+      </label>
+      <button id="joinBtn">Join Lobby</button>
+      <div id="status" class="status">Enter room code and your name to join.</div>
+      <div id="lobbyState" class="status">Lobby state: waiting</div>
+      <div class="stats">
+        <div class="tile">Visitors<strong id="visitors">0</strong></div>
+        <div class="tile">Players<strong id="players">0</strong></div>
+        <div class="tile">Spectators<strong id="spectators">0</strong></div>
+      </div>
+      <div id="waitingPanel" class="game-panel">Waiting for admin to start the game...</div>
+      <div id="gamePanel" class="game-panel hidden">
+        <strong>Main Game Screen</strong>
+        <div class="levels" id="levelsGrid"></div>
+        <div id="challengePanel" class="challenge-panel hidden">
+          <h4 id="challengeTitle">Challenge</h4>
+          <div id="challengeMeta" class="status">-</div>
+          <pre id="challengePrompt"></pre>
+          <label>
+            Your Flag Answer
+            <input id="answerInput" maxlength="200" placeholder="e.g. DOOM{...}" />
+          </label>
+          <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <button id="submitAnswerBtn">Submit Answer</button>
+            <button id="closeChallengeBtn" type="button">Back to Levels</button>
+          </div>
+          <div id="answerResult" class="status">Pick a level to start.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    const roomCodeInput = document.getElementById("roomCode");
+    const displayNameInput = document.getElementById("displayName");
+    const roleInput = document.getElementById("role");
+    const joinBtn = document.getElementById("joinBtn");
+    const statusEl = document.getElementById("status");
+    const visitorsEl = document.getElementById("visitors");
+    const playersEl = document.getElementById("players");
+    const spectatorsEl = document.getElementById("spectators");
+    const lobbyStateEl = document.getElementById("lobbyState");
+    const waitingPanelEl = document.getElementById("waitingPanel");
+    const gamePanelEl = document.getElementById("gamePanel");
+    const levelsGridEl = document.getElementById("levelsGrid");
+    const challengePanelEl = document.getElementById("challengePanel");
+    const challengeTitleEl = document.getElementById("challengeTitle");
+    const challengeMetaEl = document.getElementById("challengeMeta");
+    const challengePromptEl = document.getElementById("challengePrompt");
+    const answerInputEl = document.getElementById("answerInput");
+    const submitAnswerBtn = document.getElementById("submitAnswerBtn");
+    const closeChallengeBtn = document.getElementById("closeChallengeBtn");
+    const answerResultEl = document.getElementById("answerResult");
+    const API_BASE = window.location.protocol === "file:" ? "http://127.0.0.1:8000" : "";
+    const IS_LOCAL_HOST = ["localhost", "127.0.0.1"].includes(window.location.hostname) || window.location.protocol === "file:";
+
+    let joinedRoom = "";
+    let levelsLoaded = false;
+    let selectedLevelId = "";
+    let levelsById = {};
+
+    function apiUrl(path) {
+      return `${API_BASE}${path}`;
+    }
+
+    function setStatus(text, isError = false) {
+      statusEl.textContent = text;
+      statusEl.classList.toggle("error", isError);
+    }
+
+    function paintStats(stats) {
+      visitorsEl.textContent = stats.total_visitors;
+      playersEl.textContent = stats.players;
+      spectatorsEl.textContent = stats.spectators;
+      lobbyStateEl.textContent = `Lobby state: ${stats.lobby_status}`;
+      updateLobbyView(stats.lobby_status);
+    }
+
+    function updateLobbyView(lobbyStatus) {
+      const isLive = lobbyStatus === "live";
+      waitingPanelEl.classList.toggle("hidden", isLive);
+      gamePanelEl.classList.toggle("hidden", !isLive);
+      if (isLive && !levelsLoaded) {
+        loadGameLevels();
+      }
+    }
+
+    function renderLevels(levels) {
+      if (!levels.length) {
+        levelsGridEl.innerHTML = "<div class='level-card'>No levels available yet.</div>";
+        return;
+      }
+      levelsById = Object.fromEntries(levels.map(level => [level.id, level]));
+      levelsGridEl.innerHTML = levels.map(level => `
+        <article class="level-card">
+          <h4>${level.title}</h4>
+          <p>${level.description}</p>
+          <div class="pts">${level.points} points</div>
+          <button type="button" data-level-id="${level.id}">Open Challenge</button>
+        </article>
+      `).join("");
+
+      levelsGridEl.querySelectorAll("button[data-level-id]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const levelId = btn.getAttribute("data-level-id");
+          if (levelId) {
+            openChallenge(levelId);
+          }
+        });
+      });
+    }
+
+    async function openChallenge(levelId) {
+      if (IS_LOCAL_HOST) {
+        try {
+          const launchRes = await fetch(apiUrl("/api/game/launch-desktop"), {
+            method: "POST"
+          });
+          if (launchRes.ok) {
+            setStatus("Desktop game launched on this machine. Use the opened app window for full GUI gameplay.");
+          }
+        } catch {
+        }
+      }
+
+      try {
+        const res = await fetch(apiUrl(`/api/game/levels/${encodeURIComponent(levelId)}`));
+        const data = await res.json();
+        if (!res.ok) {
+          setStatus(data.detail || "Could not load challenge.", true);
+          return;
+        }
+
+        selectedLevelId = data.id;
+        challengeTitleEl.textContent = `${data.title} Challenge`;
+        challengeMetaEl.textContent = `${data.description} | ${data.points} points`;
+        challengePromptEl.textContent = data.challenge_prompt;
+        answerInputEl.value = "";
+        answerResultEl.textContent = "Submit your answer to validate.";
+        challengePanelEl.classList.remove("hidden");
+      } catch {
+        setStatus("Network error while loading challenge.", true);
+      }
+    }
+
+    async function loadGameLevels() {
+      try {
+        const res = await fetch(apiUrl("/api/game/levels"));
+        if (!res.ok) {
+          return;
+        }
+        const levels = await res.json();
+        levelsLoaded = true;
+        renderLevels(levels);
+        if (levels.length) {
+          openChallenge(levels[0].id);
+        }
+      } catch {
+      }
+    }
+
+    async function refreshPublicStats() {
+      if (!joinedRoom) return;
+      try {
+        const res = await fetch(apiUrl(`/api/lobby/${joinedRoom}/public`));
+        if (!res.ok) return;
+        const data = await res.json();
+        paintStats(data);
+      } catch {
+      }
+    }
+
+    joinBtn.addEventListener("click", async () => {
+      const room_code = roomCodeInput.value.trim().toUpperCase();
+      const name = displayNameInput.value.trim();
+      const role = roleInput.value;
+
+      if (!room_code || !name) {
+        setStatus("Room code and display name are required.", true);
+        return;
+      }
+
+      joinBtn.disabled = true;
+      setStatus("Joining lobby...");
+
+      try {
+        const res = await fetch(apiUrl("/api/lobby/join"), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ room_code, name, role })
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          setStatus(data.detail || "Could not join lobby.", true);
+          if (res.status === 423) {
+            lobbyStateEl.textContent = "Lobby state: live (join locked)";
+          }
+          return;
+        }
+
+        joinedRoom = room_code;
+        paintStats(data.stats);
+        setStatus(`Joined ${room_code} as ${role}. Waiting for admin to start...`);
+        if (data.stats && data.stats.lobby_status === "live") {
+          setStatus(`Joined ${room_code} as ${role}. Game already started.`, false);
+        }
+      } catch {
+        setStatus("Network error while joining.", true);
+      } finally {
+        joinBtn.disabled = false;
+      }
+    });
+
+    submitAnswerBtn.addEventListener("click", async () => {
+      if (!selectedLevelId) {
+        answerResultEl.textContent = "Open a challenge first.";
+        return;
+      }
+
+      const answer = answerInputEl.value.trim();
+      if (!answer) {
+        answerResultEl.textContent = "Answer is required.";
+        return;
+      }
+
+      submitAnswerBtn.disabled = true;
+      answerResultEl.textContent = "Checking answer...";
+
+      try {
+        const res = await fetch(apiUrl("/api/game/submit"), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ level_id: selectedLevelId, answer })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          answerResultEl.textContent = data.detail || `Could not submit answer (HTTP ${res.status}).`;
+          return;
+        }
+
+        answerResultEl.textContent = data.message;
+        if (data.correct) {
+          setStatus(`Correct on ${selectedLevelId.toUpperCase()}. ${data.message}`);
+        }
+      } catch {
+        answerResultEl.textContent = "Network error while submitting answer.";
+      } finally {
+        submitAnswerBtn.disabled = false;
+      }
+    });
+
+    closeChallengeBtn.addEventListener("click", () => {
+      challengePanelEl.classList.add("hidden");
+      selectedLevelId = "";
+    });
+
+    setInterval(refreshPublicStats, 3000);
+  </script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+services:
+  - type: web
+    name: doomdada-web-lobby
+    env: python
+    plan: free
+    buildCommand: pip install -r webapp/requirements.txt
+    startCommand: uvicorn webapp.app:app --host 0.0.0.0 --port $PORT
+    autoDeploy: true
