@@ -129,6 +129,16 @@
       width: 100%;
       background: linear-gradient(120deg, #0c4a6e, #0284c7);
     }
+    .level-card.done {
+      border-color: #22c55e;
+      box-shadow: inset 0 0 0 1px rgba(34, 197, 94, 0.3);
+    }
+    .level-card .done-tag {
+      margin-top: 8px;
+      color: #86efac;
+      font-size: 0.85rem;
+      font-weight: 700;
+    }
     .challenge-panel {
       margin-top: 12px;
       border: 1px solid #35556d;
@@ -240,6 +250,8 @@
     let levelsLoaded = false;
     let selectedLevelId = "";
     let levelsById = {};
+    let levelOrder = [];
+    const solvedLevels = new Set();
 
     function apiUrl(path) {
       return `${API_BASE}${path}`;
@@ -273,12 +285,14 @@
         return;
       }
       levelsById = Object.fromEntries(levels.map(level => [level.id, level]));
+      levelOrder = levels.map(level => level.id);
       levelsGridEl.innerHTML = levels.map(level => `
-        <article class="level-card">
+        <article class="level-card ${solvedLevels.has(level.id) ? "done" : ""}">
           <h4>${level.title}</h4>
           <p>${level.description}</p>
           <div class="pts">${level.points} points</div>
-          <button type="button" data-level-id="${level.id}">Open Challenge</button>
+          <button type="button" data-level-id="${level.id}">${solvedLevels.has(level.id) ? "Review Challenge" : "Open Challenge"}</button>
+          ${solvedLevels.has(level.id) ? '<div class="done-tag">Solved</div>' : ""}
         </article>
       `).join("");
 
@@ -335,10 +349,27 @@
         levelsLoaded = true;
         renderLevels(levels);
         if (levels.length) {
-          openChallenge(levels[0].id);
+          const nextId = levels.find(level => !solvedLevels.has(level.id))?.id || levels[0].id;
+          openChallenge(nextId);
         }
       } catch {
       }
+    }
+
+    function getNextUnsolvedLevelId(currentLevelId) {
+      if (!levelOrder.length) {
+        return "";
+      }
+
+      const currentIndex = levelOrder.indexOf(currentLevelId);
+      for (let idx = currentIndex + 1; idx < levelOrder.length; idx += 1) {
+        const candidate = levelOrder[idx];
+        if (!solvedLevels.has(candidate)) {
+          return candidate;
+        }
+      }
+
+      return "";
     }
 
     async function refreshPublicStats() {
@@ -423,7 +454,21 @@
 
         answerResultEl.textContent = data.message;
         if (data.correct) {
+          solvedLevels.add(selectedLevelId);
+          renderLevels(Object.values(levelsById));
           setStatus(`Correct on ${selectedLevelId.toUpperCase()}. ${data.message}`);
+
+          const nextLevelId = getNextUnsolvedLevelId(selectedLevelId);
+          if (nextLevelId) {
+            answerResultEl.textContent = `${data.message} Loading next challenge...`;
+            setTimeout(() => {
+              openChallenge(nextLevelId);
+            }, 450);
+          } else {
+            answerResultEl.textContent = "All challenges completed. Great run!";
+            challengeMetaEl.textContent = "Completed all available levels.";
+            challengePromptEl.textContent = "You cleared the full web challenge set. You can review any level from the cards above.";
+          }
         }
       } catch {
         answerResultEl.textContent = "Network error while submitting answer.";
