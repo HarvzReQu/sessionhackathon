@@ -6,16 +6,16 @@
   <title>Reverse Engineering Game - Webinar Edition</title>
   <style>
     :root {
-      --bg: #03070c;
-      --panel: #121923;
-      --line: #1fdc73;
-      --line-dim: #2f4658;
-      --text: #d7e3ef;
-      --muted: #95a7b8;
-      --accent: #18ce67;
-      --hot: #e91e63;
-      --cyan: #1aa4ff;
-      --warn: #facc15;
+      --bg: #0b0f17;
+      --panel: #111927;
+      --line: #9fef00;
+      --line-dim: #2b3b52;
+      --text: #d3deee;
+      --muted: #91a4bc;
+      --accent: #9fef00;
+      --hot: #4da3ff;
+      --cyan: #00b4d8;
+      --warn: #f59e0b;
     }
     * { box-sizing: border-box; }
     body {
@@ -24,21 +24,21 @@
       font-family: Consolas, "Courier New", monospace;
       color: var(--text);
       background:
-        radial-gradient(circle at 16% 12%, #103f31 0%, transparent 28%),
-        radial-gradient(circle at 84% 92%, #3d132b 0%, transparent 32%),
-        linear-gradient(140deg, #010306, var(--bg));
+        radial-gradient(circle at 10% 8%, #1d2c44 0%, transparent 26%),
+        radial-gradient(circle at 86% 88%, #133822 0%, transparent 30%),
+        linear-gradient(140deg, #070b12, var(--bg));
       padding: 16px;
     }
     .shell {
       width: min(1280px, 100%);
       margin: 0 auto;
-      border: 1px solid #16a34a;
-      background: #0b1119;
-      box-shadow: 0 0 0 2px rgba(22, 163, 74, 0.12), 0 18px 40px rgba(0, 0, 0, 0.6);
+      border: 1px solid #2f425d;
+      background: #0d1420;
+      box-shadow: 0 0 0 2px rgba(77, 163, 255, 0.1), 0 18px 40px rgba(0, 0, 0, 0.6);
     }
     .ticker {
-      border-bottom: 1px solid #156d3f;
-      color: #31ff88;
+      border-bottom: 1px solid #2b3f5a;
+      color: #9fef00;
       padding: 6px 10px;
       font-size: 12px;
       white-space: nowrap;
@@ -48,12 +48,12 @@
     .hero {
       text-align: center;
       padding: 18px 12px 10px;
-      border-bottom: 1px solid #1f2f3f;
-      background: linear-gradient(180deg, rgba(26, 164, 255, 0.06), rgba(233, 30, 99, 0.04));
+      border-bottom: 1px solid #233248;
+      background: linear-gradient(180deg, rgba(77, 163, 255, 0.08), rgba(159, 239, 0, 0.05));
     }
     .hero pre {
       margin: 0;
-      color: #64ff7a;
+      color: #b4ff39;
       font-size: clamp(20px, 4vw, 50px);
       line-height: 0.95;
       letter-spacing: 1px;
@@ -61,7 +61,7 @@
     }
     .hero h1 {
       margin: 8px 0 0;
-      color: #ff2d7a;
+      color: #a8c6ff;
       font-size: clamp(20px, 2vw, 36px);
     }
     .hero p { margin: 6px 0 0; color: var(--accent); font-weight: 700; }
@@ -75,6 +75,13 @@
     }
     .content { padding: 14px; display: grid; gap: 12px; }
     .label { color: #ff2d7a; font-weight: 700; font-size: 0.9rem; margin-bottom: 6px; }
+    .ctf-note {
+      border: 1px solid #2c4c23;
+      background: #111f16;
+      color: #ccefb8;
+      padding: 8px 10px;
+      font-size: 0.86rem;
+    }
     .brief {
       border: 2px solid var(--hot);
       background: #1a2230;
@@ -98,17 +105,17 @@
       font: inherit;
     }
     .btn {
-      border: 1px solid #ef2b78;
-      background: #e91e63;
-      color: #fff;
+      border: 1px solid #3f5c7c;
+      background: #223750;
+      color: #dce7f6;
       padding: 8px 12px;
       font: inherit;
       font-weight: 700;
       cursor: pointer;
     }
     .btn.alt {
-      background: #006aa8;
-      border-color: #2788c0;
+      background: #152739;
+      border-color: #355476;
     }
     .toggles {
       display: flex;
@@ -145,11 +152,11 @@
     .card p { margin: 8px 0; color: #c7d5e3; }
     .points { color: var(--warn); font-weight: 700; }
     .runner {
-      border: 2px solid #ef2b78;
+      border: 2px solid #2f4663;
       background: #0d1622;
       padding: 10px;
     }
-    .runner h3 { margin: 0 0 8px; color: #ff4a8d; }
+    .runner h3 { margin: 0 0 8px; color: #9fef00; }
     .runner-log {
       border: 1px solid #45607a;
       background: #07111c;
@@ -450,8 +457,28 @@
     }
     .modal-head h3 {
       margin: 0;
-      color: #8dff75;
+      color: #a8c6ff;
       font-size: 1rem;
+    }
+    .challenge-meta-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 6px;
+    }
+    .challenge-meta-badges span {
+      border: 1px solid #355476;
+      background: #0f1e2f;
+      color: #c9d7eb;
+      padding: 2px 8px;
+      font-size: 0.8rem;
+    }
+    .flag-reminder {
+      border: 1px solid #2b3f59;
+      background: #0b1521;
+      color: #a8b8cd;
+      padding: 8px;
+      font-size: 0.84rem;
     }
     .onboard-tip {
       border: 1px solid #2f6f45;
@@ -495,11 +522,13 @@
       <div class="controls">
         <span>Player:</span>
         <input id="playerName" type="text" placeholder="Presenter" />
-        <button class="btn" id="btnWhat">What is Rev. Eng?</button>
-        <button class="btn" id="btnHow">How to Play</button>
+        <button class="btn" id="btnWhat">About Category</button>
+        <button class="btn" id="btnHow">Challenge Rules</button>
         <button class="btn" id="btnBeginner">Beginner Tutorial</button>
         <button class="btn" id="btnStory">Story Intro</button>
       </div>
+
+      <div class="ctf-note">CTF Flow: Read prompt -> inspect script -> use hints only when needed -> submit flag in exact format.</div>
 
       <div class="toggles">
         <label><input type="checkbox" checked />Boost Mode</label>
@@ -556,7 +585,9 @@
         <button class="btn alt" id="dismissOnboardBtn" type="button">Got it</button>
       </div>
       <div id="challengeMeta" class="status">Select any difficulty card to load a challenge.</div>
+      <div id="challengeMetaBadges" class="challenge-meta-badges"></div>
       <pre id="challengePrompt">Waiting for level selection...</pre>
+      <div class="flag-reminder">Flag format reminder: DOOM{...} (case-sensitive, symbols matter).</div>
       <div id="specialArea" class="special-area"></div>
       <div class="answer-row">
         <input id="answerInput" type="text" maxlength="200" placeholder="Type your flag answer here, e.g. DOOM{...}" />
@@ -567,7 +598,7 @@
           <div>
             <div class="helper-buttons">
               <button class="btn" id="btnNeedHelp">Need Help?</button>
-              <button class="btn" id="btnWalkthrough">Walkthrough</button>
+              <button class="btn" id="btnWalkthrough">Hint Ladder</button>
               <button class="btn" id="btnWhy">Why It Matters</button>
               <button class="btn" id="btnMistakes">Common Mistakes</button>
               <button class="btn wide" id="btnPresenter">Presenter Script</button>
@@ -611,6 +642,7 @@ Console: waiting for input</div>
     const missionBriefEl = document.getElementById("missionBrief");
     const challengeTitleEl = document.getElementById("challengeTitle");
     const challengeMetaEl = document.getElementById("challengeMeta");
+    const challengeMetaBadgesEl = document.getElementById("challengeMetaBadges");
     const challengePromptEl = document.getElementById("challengePrompt");
     const specialAreaEl = document.getElementById("specialArea");
     const answerInputEl = document.getElementById("answerInput");
@@ -872,6 +904,18 @@ Console: waiting for input</div>
     function setAnswerStatus(text, isError = false) {
       answerStatusEl.textContent = text;
       answerStatusEl.classList.toggle("error", isError);
+    }
+
+    function challengeDifficulty(id) {
+      const map = {
+        easy: "Easy",
+        medium: "Medium",
+        hard: "Hard",
+        xhard: "Very Hard",
+        crazy: "Insane",
+        doomdada: "Elite",
+      };
+      return map[id] || "Unknown";
     }
 
     function logRunner(line) {
@@ -1368,6 +1412,11 @@ Console: waiting for input</div>
         selectedLevelId = data.id;
         challengeTitleEl.textContent = `${data.title} Challenge`;
         challengeMetaEl.textContent = `${data.description} | ${data.points} points | Total Score: ${score}`;
+        challengeMetaBadgesEl.innerHTML = `
+          <span>Category: Reverse Engineering</span>
+          <span>Difficulty: ${challengeDifficulty(data.id)}</span>
+          <span>Points: ${data.points}</span>
+        `;
         challengePromptEl.textContent = data.id === "doomdada" ? doomdadaScriptCode : data.challenge_prompt;
         answerInputEl.value = "";
         setAnswerStatus(`Loaded ${data.title}. Submit your flag.`, false);
