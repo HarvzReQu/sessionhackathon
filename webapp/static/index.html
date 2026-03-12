@@ -809,31 +809,34 @@ Console: waiting for input</div>
       "Hint 5: Wrap the exact transformed text as DOOM{...}.",
     ];
 
-    const doomdadaScriptCode = `# DOOMDADA Final Boss Script
-# Storyline: Bridge Boy left a script instead of direct clues.
-# Instruction: Copy this script into any online Python compiler and run it.
-# Submit the exact printed flag output.
+    const doomdadaScriptCode = `# DOOMDADA Final Boss Script (BROKEN ON PURPOSE)
+  # Storyline: Bridge Boy left a damaged script, not direct clues.
+  # Instruction: Fix missing syntax/variables first, then run in online Python compiler.
+  # Submit the exact printed flag output.
 
-def story_seed() -> str:
-    return "congratulations!"
+  def story_seed() -> str:
+    # TODO: Recover exact phrase from storyline context
+    return __MISSING_PHRASE__
 
-def apply_leet(text: str) -> str:
-    table = {"o": "0", "g": "6", "a": "@", "t": "+", "s": "$"}
+  def apply_leet(text: str) -> str:
+    # TODO: Complete the table
+    table = {"o": "0", "g": "6", "a": "@", "t": __MISSING_T__, "s": "$"}
     return "".join(table.get(ch, ch) for ch in text.lower())
 
-def apply_case_pattern(text: str) -> str:
+  def apply_case_pattern(text: str) -> str:
     chars = list(text)
-    chars[0] = chars[0].upper()  # c -> C
-    chars[7] = chars[7].upper()  # u -> U
-    return "".join(chars[:9]) + "4tIoN$!"
+    # TODO: Fill exact index for second uppercase char
+    chars[0] = chars[0].upper()
+    chars[__MISSING_INDEX__] = chars[__MISSING_INDEX__].upper()
+    return "".join(chars[:9]) + __MISSING_SUFFIX__
 
-def build_flag() -> str:
+  def build_flag() -> str:
     phrase = story_seed()
     stage1 = apply_leet(phrase)
     stage2 = apply_case_pattern(stage1)
     return f"DOOM{{{stage2}}}"
 
-print(build_flag())`;
+  print(build_flag())`;
 
       const doomdadaDebugLines = [
         "def story_seed() -> str:",
@@ -1214,7 +1217,7 @@ print(build_flag())`;
       specialAreaEl.classList.add("active");
       specialAreaEl.innerHTML = `
         <div class="status">DOOMDADA No-Clue Mode Enabled.</div>
-        <div class="status">Only the code script and storyline are provided. Run the script in an online Python compiler to obtain the flag output.</div>
+        <div class="status">Only a broken script and storyline are provided. Students must repair missing syntax/variables, then run it in an online Python compiler to obtain the flag output.</div>
       `;
       answerInputEl.disabled = false;
       submitAnswerBtn.disabled = false;
