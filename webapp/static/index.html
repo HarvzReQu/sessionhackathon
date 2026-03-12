@@ -199,7 +199,49 @@
     .card.active { border-color: #1aa4ff; }
     .card.done { border-color: #22c55e; }
     .card h3 { margin: 0; color: #8dff75; }
-    .card p { margin: 8px 0; color: #c7d5e3; }
+    .card p {
+      margin: 8px 0;
+      color: #c7d5e3;
+      min-height: 38px;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .card-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 8px;
+    }
+    .card-top .points {
+      font-size: 0.85rem;
+      white-space: nowrap;
+    }
+    .card-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 6px;
+    }
+    .card-chips span {
+      border: 1px solid #3a516b;
+      background: rgba(10, 18, 30, 0.72);
+      color: #c8d7e9;
+      font-size: 0.74rem;
+      padding: 2px 7px;
+      border-radius: 999px;
+    }
+    .chip-solved {
+      border-color: #2f8b57 !important;
+      color: #b3f6cc !important;
+      background: rgba(18, 65, 42, 0.6) !important;
+    }
+    .chip-locked {
+      border-color: #8c3448 !important;
+      color: #ffd3dd !important;
+      background: rgba(61, 17, 29, 0.65) !important;
+    }
     .points { color: var(--warn); font-weight: 700; }
     .runner {
       border: 2px solid #2f4663;
@@ -1174,11 +1216,19 @@ Console: waiting for input</div>
 
       levelsGridEl.innerHTML = levels.map((lvl) => `
         <article class="card level-${lvl.id} ${selectedLevelId === lvl.id ? "active" : ""} ${solved.has(lvl.id) ? "done" : ""} ${lvl.id === "doomdada" && isDoomBlocked() ? "blocked" : ""}">
-          <h3>${lvl.title}</h3>
+          <div class="card-top">
+            <h3>${lvl.title}</h3>
+            <div class="points">${lvl.points} pts</div>
+          </div>
+          <div class="card-chips">
+            <span>${challengeDifficulty(lvl.id)}</span>
+            <span>${lvl.id.toUpperCase()}</span>
+            ${solved.has(lvl.id) ? '<span class="chip-solved">Solved</span>' : '<span>Unsolved</span>'}
+            ${lvl.id === "doomdada" && isDoomBlocked() ? `<span class="chip-locked">BLOCK ${formatCooldownClock(getDoomCooldownRemainingMs())}</span>` : ""}
+          </div>
           <p>${lvl.id === "doomdada" && isDoomBlocked() ? `[ BLOCK ] Locked for ${formatCooldownClock(getDoomCooldownRemainingMs())}` : lvl.description}</p>
-          <div class="points">${lvl.points} points</div>
           <div style="margin-top:10px;">
-            <button class="btn alt" data-level-id="${lvl.id}" ${lvl.id === "doomdada" && isDoomBlocked() ? "disabled" : ""}>${lvl.id === "doomdada" && isDoomBlocked() ? `[ BLOCK ] ${formatCooldownClock(getDoomCooldownRemainingMs())}` : `${solved.has(lvl.id) ? "Replay" : "Play"} ${lvl.title}`}</button>
+            <button class="btn alt" data-level-id="${lvl.id}" ${lvl.id === "doomdada" && isDoomBlocked() ? "disabled" : ""}>${lvl.id === "doomdada" && isDoomBlocked() ? `[ BLOCK ] ${formatCooldownClock(getDoomCooldownRemainingMs())}` : `${solved.has(lvl.id) ? "Replay" : "Start"} ${lvl.title}`}</button>
           </div>
         </article>
       `).join("");
