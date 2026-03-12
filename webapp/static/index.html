@@ -683,6 +683,8 @@ Console: waiting for input</div>
       cheat: btnCheat,
       function: btnFunction,
     };
+    const helperButtonList = Object.values(helperButtons);
+    const miniActionButtons = [btnInsertSeed, btnInsertLeet, btnInsertCase, btnInsertBuild];
 
     let levels = [];
     let selectedLevelId = "";
@@ -704,38 +706,31 @@ Console: waiting for input</div>
       "Hint 5: Wrap the exact transformed text as DOOM{...}.",
     ];
 
-    const doomdadaScriptCode = `# DOOMDADA Analysis Script (incomplete by design)
-  # Story: A boy lives under the bridge and writes clues in code.
-  # Your mission is to reconstruct his final access flag.
-  # Some pieces are missing - complete mentally using hints.
+    const doomdadaScriptCode = `# DOOMDADA Final Boss Script
+# Storyline: Bridge Boy left a script instead of direct clues.
+# Instruction: Copy this script into any online Python compiler and run it.
+# Submit the exact printed flag output.
 
-  def story_seed() -> str:
-    # TODO: Recover the base phrase from clues
-    return "<missing_phrase>"
+def story_seed() -> str:
+    return "congratulations!"
 
-  def apply_leet(text: str) -> str:
-    # Symbol swaps from his notebook (some entries hidden)
-    table = {"o": "0", "g": "6", "a": "@", "t": "?", "s": "$"}
+def apply_leet(text: str) -> str:
+    table = {"o": "0", "g": "6", "a": "@", "t": "+", "s": "$"}
     return "".join(table.get(ch, ch) for ch in text.lower())
 
-  def apply_case_pattern(text: str) -> str:
-    # Uppercase indexes from graffiti marks (0-based)
-    upper_idx = {0, ?, ?, ?, ?}
-    out = []
-    for i, ch in enumerate(text):
-      out.append(ch.upper() if i in upper_idx else ch.lower())
-    return "".join(out)
+def apply_case_pattern(text: str) -> str:
+    chars = list(text)
+    chars[0] = chars[0].upper()  # c -> C
+    chars[7] = chars[7].upper()  # u -> U
+    return "".join(chars[:9]) + "4tIoN$!"
 
-  def build_flag() -> str:
+def build_flag() -> str:
     phrase = story_seed()
     stage1 = apply_leet(phrase)
     stage2 = apply_case_pattern(stage1)
     return f"DOOM{{{stage2}}}"
 
-  # QUESTION:
-  # What is the exact output of build_flag()?
-  # Submit exactly, including symbols and uppercase/lowercase.
-  # Use debugger + hints to fill missing pieces.`;
+print(build_flag())`;
 
       const doomdadaDebugLines = [
         "def story_seed() -> str:",
@@ -864,6 +859,11 @@ Console: waiting for input</div>
     }
 
     function setGuidance(kind) {
+      if (selectedLevelId === "doomdada") {
+        guidancePanelEl.textContent = "DOOMDADA no-clue mode: hints and walkthroughs are disabled for this level.\n\nUse only the script in the challenge prompt. Run it in an online Python compiler and submit the exact printed output.";
+        return;
+      }
+
       const g = activeGuide();
       if (!g) {
         guidancePanelEl.textContent = "Select a challenge first to view guidance.";
@@ -1042,14 +1042,14 @@ Console: waiting for input</div>
     }
 
     function setRecommendedHelpers(levelId) {
-      Object.values(helperButtons).forEach((btn) => btn.classList.remove("recommended"));
+      helperButtonList.forEach((btn) => btn.classList.remove("recommended"));
       const recommendations = {
         easy: ["hint", "walkthrough"],
         medium: ["hint", "mistakes"],
         hard: ["walkthrough", "mistakes"],
         xhard: ["hint", "walkthrough"],
         crazy: ["hint", "why"],
-        doomdada: ["trace", "function"],
+        doomdada: [],
       };
 
       (recommendations[levelId] || ["hint"]).forEach((key) => {
@@ -1058,6 +1058,30 @@ Console: waiting for input</div>
           btn.classList.add("recommended");
         }
       });
+    }
+
+    function setDoomdadaNoHintMode(enabled) {
+      helperButtonList.forEach((btn) => {
+        btn.disabled = enabled;
+      });
+      miniActionButtons.forEach((btn) => {
+        btn.disabled = enabled;
+      });
+
+      if (enabled) {
+        guidancePanelEl.textContent = "DOOMDADA no-clue mode: use only the script and storyline.\n\nRun the script in any online Python compiler and submit the exact output flag.";
+        miniConsoleEl.textContent = "# DOOMDADA no-clue mode\n# 1) Copy script from challenge prompt\n# 2) Run in online Python compiler\n# 3) Submit exact output as DOOM{...}";
+      }
+    }
+
+    function renderDoomdadaCompilerNote() {
+      specialAreaEl.classList.add("active");
+      specialAreaEl.innerHTML = `
+        <div class="status">DOOMDADA No-Clue Mode Enabled.</div>
+        <div class="status">Only the code script and storyline are provided. Run the script in an online Python compiler to obtain the flag output.</div>
+      `;
+      answerInputEl.disabled = false;
+      submitAnswerBtn.disabled = false;
     }
 
     function clearSpecialArea() {
@@ -1424,6 +1448,7 @@ Console: waiting for input</div>
         levelStartTimes.set(data.id, performance.now());
         guidancePanelEl.textContent = "Welcome to the guidance panel.\nClick any helper button to show explanations while the challenge stays visible.";
         miniConsoleEl.textContent = "# Try Python here. Examples:\n# build_flag()\n# result = build_flag(); print(result)\n\nConsole: waiting for input";
+        setDoomdadaNoHintMode(data.id === "doomdada");
         setRecommendedHelpers(data.id);
 
         clearSpecialArea();
@@ -1432,7 +1457,7 @@ Console: waiting for input</div>
         } else if (data.id === "crazy") {
           renderCrazyMode();
         } else if (data.id === "doomdada") {
-          renderDoomdadaGate();
+          renderDoomdadaCompilerNote();
         }
 
         if (openModal) {
