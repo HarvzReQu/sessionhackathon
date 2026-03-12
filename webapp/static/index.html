@@ -186,9 +186,13 @@
     .helper-buttons {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 8px;
+      gap: 6px;
     }
     .helper-buttons .wide { grid-column: 1 / -1; }
+    .helper-buttons .recommended {
+      outline: 2px solid #22c55e;
+      box-shadow: inset 0 0 0 2px rgba(34, 197, 94, 0.24);
+    }
     .helper-panel {
       border: 1px solid #45607a;
       background: #08121d;
@@ -310,6 +314,18 @@
       color: #8dff75;
       font-size: 1rem;
     }
+    .onboard-tip {
+      border: 1px solid #2f6f45;
+      background: #0e1f16;
+      color: #c6f6d5;
+      padding: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.9rem;
+    }
+    .onboard-tip.hidden { display: none; }
     @media (max-width: 980px) {
       .game-grid { grid-template-columns: 1fr; }
       .levels { grid-template-columns: 1fr; }
@@ -380,6 +396,10 @@
       <div class="modal-head">
         <h3 id="challengeTitle">Challenge Workspace</h3>
         <button class="btn" id="closeModalBtn" type="button">Close</button>
+      </div>
+      <div id="onboardTip" class="onboard-tip hidden">
+        <span>How to play: 1) Read prompt 2) Tap Need Help 3) Submit your flag.</span>
+        <button class="btn alt" id="dismissOnboardBtn" type="button">Got it</button>
       </div>
       <div id="challengeMeta" class="status">Select any difficulty card to load a challenge.</div>
       <pre id="challengePrompt">Waiting for level selection...</pre>
@@ -453,12 +473,24 @@ Console: waiting for input</div>
     const btnInsertBuild = document.getElementById("btnInsertBuild");
     const playModalEl = document.getElementById("playModal");
     const closeModalBtn = document.getElementById("closeModalBtn");
+    const onboardTipEl = document.getElementById("onboardTip");
+    const dismissOnboardBtn = document.getElementById("dismissOnboardBtn");
 
     const btnWhat = document.getElementById("btnWhat");
     const btnHow = document.getElementById("btnHow");
     const btnBeginner = document.getElementById("btnBeginner");
     const btnStory = document.getElementById("btnStory");
     const btnResetProgress = document.getElementById("btnResetProgress");
+    const helperButtons = {
+      hint: btnNeedHelp,
+      walkthrough: btnWalkthrough,
+      why: btnWhy,
+      mistakes: btnMistakes,
+      presenter: btnPresenter,
+      trace: btnTrace,
+      cheat: btnCheat,
+      function: btnFunction,
+    };
 
     let levels = [];
     let selectedLevelId = "";
@@ -640,10 +672,32 @@ Console: waiting for input</div>
 
     function openPlayModal() {
       playModalEl.classList.remove("hidden");
+      if (localStorage.getItem("doomdada_onboard_seen_v1") !== "1") {
+        onboardTipEl.classList.remove("hidden");
+      }
     }
 
     function closePlayModal() {
       playModalEl.classList.add("hidden");
+    }
+
+    function setRecommendedHelpers(levelId) {
+      Object.values(helperButtons).forEach((btn) => btn.classList.remove("recommended"));
+      const recommendations = {
+        easy: ["hint", "walkthrough"],
+        medium: ["hint", "mistakes"],
+        hard: ["walkthrough", "mistakes"],
+        xhard: ["hint", "walkthrough"],
+        crazy: ["hint", "why"],
+        doomdada: ["trace", "function"],
+      };
+
+      (recommendations[levelId] || ["hint"]).forEach((key) => {
+        const btn = helperButtons[key];
+        if (btn) {
+          btn.classList.add("recommended");
+        }
+      });
     }
 
     function clearSpecialArea() {
@@ -834,6 +888,7 @@ Console: waiting for input</div>
         logRunner(`task.inject('${data.id}_challenge')`);
         guidancePanelEl.textContent = "Welcome to the guidance panel.\nClick any helper button to show explanations while the challenge stays visible.";
         miniConsoleEl.textContent = "# Try Python here. Examples:\n# build_flag()\n# result = build_flag(); print(result)\n\nConsole: waiting for input";
+        setRecommendedHelpers(data.id);
 
         clearSpecialArea();
         if (data.id === "xhard") {
@@ -989,6 +1044,10 @@ Console: waiting for input</div>
     btnStory.addEventListener("click", () => { missionBriefEl.textContent = infoBriefs.story; });
     btnResetProgress.addEventListener("click", resetProgress);
     closeModalBtn.addEventListener("click", closePlayModal);
+    dismissOnboardBtn.addEventListener("click", () => {
+      onboardTipEl.classList.add("hidden");
+      localStorage.setItem("doomdada_onboard_seen_v1", "1");
+    });
     playModalEl.addEventListener("click", (event) => {
       if (event.target === playModalEl) {
         closePlayModal();
