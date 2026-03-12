@@ -177,6 +177,42 @@
       white-space: pre-wrap;
       min-height: 95px;
     }
+    .helper-grid {
+      display: grid;
+      grid-template-columns: 1.15fr 1fr;
+      gap: 10px;
+      margin-top: 8px;
+    }
+    .helper-buttons {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+    .helper-buttons .wide { grid-column: 1 / -1; }
+    .helper-panel {
+      border: 1px solid #45607a;
+      background: #08121d;
+      min-height: 170px;
+      padding: 8px;
+      white-space: pre-wrap;
+      line-height: 1.35;
+      color: #d8e4ef;
+    }
+    .mini-console {
+      border: 1px solid #45607a;
+      background: #050c14;
+      color: #9ef9b6;
+      padding: 8px;
+      min-height: 90px;
+      white-space: pre-wrap;
+      line-height: 1.3;
+    }
+    .mini-actions {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 8px;
+    }
     .special-area {
       border: 1px dashed #43617d;
       background: #0a1420;
@@ -278,6 +314,8 @@
       .game-grid { grid-template-columns: 1fr; }
       .levels { grid-template-columns: 1fr; }
       .answer-row { grid-template-columns: 1fr; }
+      .helper-grid { grid-template-columns: 1fr; }
+      .helper-buttons { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -351,6 +389,37 @@
         <button class="btn alt" id="submitAnswerBtn">Submit Answer</button>
       </div>
       <div id="answerStatus" class="status">Ready.</div>
+        <div class="helper-grid">
+          <div>
+            <div class="helper-buttons">
+              <button class="btn" id="btnNeedHelp">Need Help?</button>
+              <button class="btn" id="btnWalkthrough">Walkthrough</button>
+              <button class="btn" id="btnWhy">Why It Matters</button>
+              <button class="btn" id="btnMistakes">Common Mistakes</button>
+              <button class="btn wide" id="btnPresenter">Presenter Script</button>
+              <button class="btn wide" id="btnTrace">Trace Table</button>
+              <button class="btn" id="btnCheat">Python Cheatsheet</button>
+              <button class="btn" id="btnFunction">Function Purpose</button>
+            </div>
+          </div>
+          <div>
+            <div class="label" style="margin-bottom:4px;">Guidance Panel</div>
+            <div id="guidancePanel" class="helper-panel">Welcome to the guidance panel.
+Click any helper button to show explanations here while the challenge remains visible.</div>
+            <div class="label" style="margin:8px 0 4px;">Mini Console</div>
+            <div id="miniConsole" class="mini-console"># Try Python here. Examples:
+# build_flag()
+# result = build_flag(); print(result)
+
+Console: waiting for input</div>
+            <div class="mini-actions">
+              <button class="btn alt" id="btnInsertSeed">Insert: Base Phrase</button>
+              <button class="btn alt" id="btnInsertLeet">Insert: Leet Stage</button>
+              <button class="btn alt" id="btnInsertCase">Insert: Case Stage</button>
+              <button class="btn alt" id="btnInsertBuild">Insert: Build Flag</button>
+            </div>
+          </div>
+        </div>
     </div>
   </div>
 
@@ -367,6 +436,21 @@
     const answerInputEl = document.getElementById("answerInput");
     const submitAnswerBtn = document.getElementById("submitAnswerBtn");
     const answerStatusEl = document.getElementById("answerStatus");
+    const guidancePanelEl = document.getElementById("guidancePanel");
+    const miniConsoleEl = document.getElementById("miniConsole");
+
+    const btnNeedHelp = document.getElementById("btnNeedHelp");
+    const btnWalkthrough = document.getElementById("btnWalkthrough");
+    const btnWhy = document.getElementById("btnWhy");
+    const btnMistakes = document.getElementById("btnMistakes");
+    const btnPresenter = document.getElementById("btnPresenter");
+    const btnTrace = document.getElementById("btnTrace");
+    const btnCheat = document.getElementById("btnCheat");
+    const btnFunction = document.getElementById("btnFunction");
+    const btnInsertSeed = document.getElementById("btnInsertSeed");
+    const btnInsertLeet = document.getElementById("btnInsertLeet");
+    const btnInsertCase = document.getElementById("btnInsertCase");
+    const btnInsertBuild = document.getElementById("btnInsertBuild");
     const playModalEl = document.getElementById("playModal");
     const closeModalBtn = document.getElementById("closeModalBtn");
 
@@ -391,6 +475,126 @@
       beginner: "Follow line by line. Write intermediate values. Do not guess. Match symbols and letter case exactly.",
       story: "Bridge boy left layered clues in terminal scripts. Decode each chapter to unlock the final DOOMDADA gate.",
     };
+
+    const levelGuides = {
+      easy: {
+        hint: "A crumpled note under the bridge has scrambled letters.",
+        learning_goal: "Spot and apply a simple text transformation rule.",
+        real_world: "Analysts often decode scrambled or obfuscated strings to understand hidden behavior.",
+        common_mistakes: [
+          "Forgetting to wrap answer in DOOM{...}",
+          "Typing the right word with wrong spelling",
+          "Adding extra spaces before or after the flag"
+        ],
+        presenter_script: "Easy Presenter Script\n\nChapter 1 starts with a bridge note. We rearrange PMTOOCBA into BOOTCAMP, then wrap it in our flag format.",
+        walkthrough: "Chapter 1 Walkthrough\n\n1) Unscramble PMTOOCBA.\n2) You get BOOTCAMP.\n3) Put it in flag format: DOOM{BOOTCAMP}.",
+        student_takeaway: "Break a puzzle into steps: transform first, format second.",
+      },
+      medium: {
+        hint: "Earl stylizes his stage tag as EARLYBIRD.",
+        learning_goal: "Practice substitution rules and precise output formatting.",
+        real_world: "Reverse engineers frequently decode transformed text to reveal hidden intent.",
+        common_mistakes: [
+          "Missing inner double quotes",
+          "Only replacing one letter (E or I)",
+          "Using lowercase when uppercase is expected"
+        ],
+        presenter_script: "Medium Presenter Script\n\nApply replacements E->3 and I->1, then keep exact custom format.",
+        walkthrough: "Chapter 2 Walkthrough\n\n1) Start with EARLYBIRD.\n2) Replace E->3 and I->1.\n3) Result: 3ARLYB1RD.\n4) Submit: DOOM{\"3ARLYB1RD\"}.",
+        student_takeaway: "Small substitution rules can change the whole output, so verify every character.",
+      },
+      hard: {
+        hint: "The bridge logs show a strict letter-case mask.",
+        learning_goal: "Follow position-based rules accurately under constraints.",
+        real_world: "One wrong character can break a key, hash, or validation routine.",
+        common_mistakes: [
+          "Using 0-based indexing instead of 1-based indexing",
+          "Capitalizing wrong letters",
+          "Forgetting required inner quotes"
+        ],
+        presenter_script: "Hard Presenter Script\n\nPrecision matters. One wrong case breaks the final value.",
+        walkthrough: "Chapter 3 Walkthrough\n\n1) Start with ambatukammm.\n2) Uppercase #1, #3, and #6.\n3) You get AmBatUkammm.\n4) Submit: DOOM{\"AmBatUkammm\"}.",
+        student_takeaway: "In security tasks, position and case both matter; precision beats guessing.",
+      },
+      xhard: {
+        hint: "Click block tiles to reveal real clue fragments.",
+        learning_goal: "Collect scattered clues and reconstruct one exact flag.",
+        real_world: "Investigators combine tiny artifacts into one final conclusion.",
+        common_mistakes: [
+          "Submitting before finding all real clues",
+          "Mixing decoy words into final flag",
+          "Wrong underscore placement"
+        ],
+        presenter_script: "XHARD Presenter Script\n\nGather evidence first, then format final output.",
+        walkthrough: "XHARD Walkthrough\n\n1) Find real clues WE, _7HE, _B3ST.\n2) Ignore decoys.\n3) Combine: DOOM{WE_7HE_B3ST}.",
+        student_takeaway: "Collect, verify, then submit.",
+      },
+      crazy: {
+        hint: "Start, wait, then stop exactly at 6.7 seconds.",
+        learning_goal: "Practice precision timing under pressure.",
+        real_world: "Timing precision matters in exploit and race-condition analysis.",
+        common_mistakes: [
+          "Stopping too early",
+          "Overshooting while waiting for perfection",
+          "Not retrying calmly"
+        ],
+        presenter_script: "CRAZY Presenter Script\n\nThis level rewards patience and rhythm, not speed.",
+        walkthrough: "CRAZY Walkthrough\n\n1) Press START.\n2) Watch timer focus near 6.7.\n3) Press STOP around target window.\n4) Submit autofilled flag.",
+        student_takeaway: "Control and timing can be as important as logic.",
+      },
+      doomdada: {
+        hint: "Follow each function step and keep exact symbols/casing in final output.",
+        learning_goal: "Trace a longer scripted flow and combine transformations in order.",
+        real_world: "Real reverse engineering often means long logic chains with exact output reconstruction.",
+        common_mistakes: [
+          "Skipping one function and guessing",
+          "Forgetting exact upper/lower symbols",
+          "Wrong punctuation placement"
+        ],
+        presenter_script: "DOOMDADA Presenter Script\n\nInspect each function, follow data flow, and avoid skipping steps.",
+        walkthrough: "DOOMDADA Walkthrough\n\n1) story_seed() => congratulations!\n2) apply_leet()\n3) apply_case_pattern()\n4) build_flag() => DOOM{C0n6r@+Ul4tIoN$!}.",
+        trace_table: "DOOMDADA Trace Table\n\nphrase = congratulations!\nstage1 = c0n6r@+ul@+i0n$!\nstage2 = C0n6r@+Ul4tIoN$!\nflag = DOOM{C0n6r@+Ul4tIoN$!}",
+        student_takeaway: "Process beats intuition on hard levels.",
+      },
+    };
+
+    function activeGuide() {
+      return levelGuides[selectedLevelId] || null;
+    }
+
+    function setGuidance(kind) {
+      const g = activeGuide();
+      if (!g) {
+        guidancePanelEl.textContent = "Select a challenge first to view guidance.";
+        return;
+      }
+
+      if (kind === "hint") {
+        guidancePanelEl.textContent = `Hint: ${g.hint || "No hint available."}`;
+      } else if (kind === "walkthrough") {
+        guidancePanelEl.textContent = g.walkthrough || "Walkthrough not available for this level yet.";
+      } else if (kind === "why") {
+        guidancePanelEl.textContent = `Learning Goal: ${g.learning_goal || "-"}\n\nWhy it matters: ${g.real_world || "-"}\n\nStudent takeaway: ${g.student_takeaway || "-"}`;
+      } else if (kind === "mistakes") {
+        const mistakes = g.common_mistakes || [];
+        guidancePanelEl.textContent = mistakes.length
+          ? `Common Mistakes:\n- ${mistakes.join("\n- ")}`
+          : "No common mistakes list for this level.";
+      } else if (kind === "presenter") {
+        guidancePanelEl.textContent = g.presenter_script || "Presenter script not available.";
+      } else if (kind === "trace") {
+        guidancePanelEl.textContent = g.trace_table || "Trace table is available mainly for DOOMDADA level.";
+      } else if (kind === "cheat") {
+        guidancePanelEl.textContent = "Python Cheatsheet\n\n= assign value\n+ add\n^ XOR\n% modulo\nfor loop repeats operations\n\nTip: compute each stage and write intermediate values.";
+      } else if (kind === "function") {
+        guidancePanelEl.textContent = "Function Purpose\n\nstory_seed(): base phrase\napply_leet(): replace letters with symbols\napply_case_pattern(): enforce uppercase/lowercase positions\nbuild_flag(): wrap final result in DOOM{...}";
+      }
+    }
+
+    function appendMiniConsole(line) {
+      miniConsoleEl.textContent += `\n${line}`;
+      miniConsoleEl.scrollTop = miniConsoleEl.scrollHeight;
+    }
 
     function apiUrl(path) {
       return `${API_BASE}${path}`;
@@ -628,6 +832,8 @@
         answerInputEl.value = "";
         setAnswerStatus(`Loaded ${data.title}. Submit your flag.`, false);
         logRunner(`task.inject('${data.id}_challenge')`);
+        guidancePanelEl.textContent = "Welcome to the guidance panel.\nClick any helper button to show explanations while the challenge stays visible.";
+        miniConsoleEl.textContent = "# Try Python here. Examples:\n# build_flag()\n# result = build_flag(); print(result)\n\nConsole: waiting for input";
 
         clearSpecialArea();
         if (data.id === "xhard") {
@@ -795,6 +1001,20 @@
         submitAnswer();
       }
     });
+
+    btnNeedHelp.addEventListener("click", () => setGuidance("hint"));
+    btnWalkthrough.addEventListener("click", () => setGuidance("walkthrough"));
+    btnWhy.addEventListener("click", () => setGuidance("why"));
+    btnMistakes.addEventListener("click", () => setGuidance("mistakes"));
+    btnPresenter.addEventListener("click", () => setGuidance("presenter"));
+    btnTrace.addEventListener("click", () => setGuidance("trace"));
+    btnCheat.addEventListener("click", () => setGuidance("cheat"));
+    btnFunction.addEventListener("click", () => setGuidance("function"));
+
+    btnInsertSeed.addEventListener("click", () => appendMiniConsole("phrase = story_seed()  # congratulations!"));
+    btnInsertLeet.addEventListener("click", () => appendMiniConsole("stage1 = apply_leet(phrase)  # c0n6r@+ul@+i0n$!"));
+    btnInsertCase.addEventListener("click", () => appendMiniConsole("stage2 = apply_case_pattern(stage1)  # C0n6r@+Ul4tIoN$!"));
+    btnInsertBuild.addEventListener("click", () => appendMiniConsole("flag = build_flag()  # DOOM{C0n6r@+Ul4tIoN$!}"));
 
     logRunner("boot.sequence('doomdada-ui') -> ready");
     loadLevels();
