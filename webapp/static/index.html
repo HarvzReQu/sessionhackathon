@@ -668,25 +668,27 @@ Console: waiting for input</div>
       "Hint 1: story_seed() returns the base text.",
       "Hint 2: apply_leet() changes o,g,a,t,s into 0,6,@,+,$.",
       "Hint 3: apply_case_pattern() uppercases indexes 0, 7, 8, 10, 12.",
-      "Hint 4: Wrap final stage inside DOOM{...}.",
+      "Hint 4: Final inside text starts with C0n6r and ends with oN$! before wrapping.",
+      "Hint 5: Wrap the exact transformed text as DOOM{...}.",
     ];
 
-    const doomdadaScriptCode = `# DOOMDADA Final Script: Bridge Boy Cipher
+    const doomdadaScriptCode = `# DOOMDADA Analysis Script (incomplete by design)
   # Story: A boy lives under the bridge and writes clues in code.
   # Your mission is to reconstruct his final access flag.
+  # Some pieces are missing - complete mentally using hints.
 
   def story_seed() -> str:
-    """The boy's note says: 'When they finally see me, they say this word.'"""
-    return "congratulations!"
+    # TODO: Recover the base phrase from clues
+    return "<missing_phrase>"
 
   def apply_leet(text: str) -> str:
-    # Symbol swaps from his notebook
-    table = {"o": "0", "g": "6", "a": "@", "t": "+", "s": "$"}
+    # Symbol swaps from his notebook (some entries hidden)
+    table = {"o": "0", "g": "6", "a": "@", "t": "?", "s": "$"}
     return "".join(table.get(ch, ch) for ch in text.lower())
 
   def apply_case_pattern(text: str) -> str:
-    # Uppercase indexes from graffiti marks (0-based): 0, 7, 8, 10, 12
-    upper_idx = {0, 7, 8, 10, 12}
+    # Uppercase indexes from graffiti marks (0-based)
+    upper_idx = {0, ?, ?, ?, ?}
     out = []
     for i, ch in enumerate(text):
       out.append(ch.upper() if i in upper_idx else ch.lower())
@@ -700,18 +702,19 @@ Console: waiting for input</div>
 
   # QUESTION:
   # What is the exact output of build_flag()?
-  # Submit exactly, including symbols and uppercase/lowercase.`;
+  # Submit exactly, including symbols and uppercase/lowercase.
+  # Use debugger + hints to fill missing pieces.`;
 
       const doomdadaDebugLines = [
         "def story_seed() -> str:",
-        "    return \"congratulations!\"",
+        "    return \"<missing_phrase>\"",
         "",
         "def apply_leet(text: str) -> str:",
-        "    table = {\"o\": \"0\", \"g\": \"6\", \"a\": \"@\", \"t\": \"+\", \"s\": \"$\"}",
+        "    table = {\"o\": \"0\", \"g\": \"6\", \"a\": \"@\", \"t\": \"?\", \"s\": \"$\"}",
         "    return \"\".join(table.get(ch, ch) for ch in text.lower())",
         "",
         "def apply_case_pattern(text: str) -> str:",
-        "    upper_idx = {0, 7, 8, 10, 12}",
+        "    upper_idx = {0, ?, ?, ?, ?}",
         "    out = []",
         "    for i, ch in enumerate(text):",
         "        out.append(ch.upper() if i in upper_idx else ch.lower())",
@@ -727,11 +730,11 @@ Console: waiting for input</div>
       ];
 
       const doomdadaDebugSteps = [
-        { line: 16, log: "[step] phrase = story_seed()", vars: { phrase: "congratulations!" }, stack: ["main", "build_flag", "story_seed"] },
-        { line: 17, log: "[step] stage1 = apply_leet(phrase)", vars: { phrase: "congratulations!", stage1: "c0n6r@+ul@+i0n$!" }, stack: ["main", "build_flag", "apply_leet"] },
-        { line: 18, log: "[step] stage2 = apply_case_pattern(stage1)", vars: { phrase: "congratulations!", stage1: "c0n6r@+ul@+i0n$!", stage2: "C0n6r@+Ul4tIoN$!" }, stack: ["main", "build_flag", "apply_case_pattern"] },
-        { line: 19, log: "[step] return DOOM{C0n6r@+Ul4tIoN$!}", vars: { flag: "DOOM{C0n6r@+Ul4tIoN$!}" }, stack: ["main", "build_flag"] },
-        { line: 21, log: "[stdout] DOOM{C0n6r@+Ul4tIoN$!}", vars: { flag: "DOOM{C0n6r@+Ul4tIoN$!}" }, stack: ["main"], done: true },
+        { line: 16, log: "[step] phrase = story_seed()", vars: { phrase: "<hidden - infer from hints>" }, stack: ["main", "build_flag", "story_seed"] },
+        { line: 17, log: "[step] stage1 = apply_leet(phrase)", vars: { phrase: "<hidden>", stage1: "<hidden intermediate>" }, stack: ["main", "build_flag", "apply_leet"] },
+        { line: 18, log: "[step] stage2 = apply_case_pattern(stage1)", vars: { stage1: "<hidden intermediate>", stage2: "<hidden final-inside>" }, stack: ["main", "build_flag", "apply_case_pattern"] },
+        { line: 19, log: "[step] return DOOM{<hidden>} ", vars: { flag: "DOOM{<derive_manually>}" }, stack: ["main", "build_flag"] },
+        { line: 21, log: "[stdout] <output hidden - submit what you derived>", vars: { flag: "<hidden>" }, stack: ["main"], done: true },
       ];
       const doomdadaBreakpointLines = new Set(doomdadaDebugSteps.map((step) => step.line));
 
@@ -1085,7 +1088,7 @@ Console: waiting for input</div>
             <button class="btn alt" id="doomRunBtn" type="button">RUN TO END</button>
             <button class="btn alt" id="doomResetBtn" type="button">RESET DEBUG</button>
             <button class="btn alt" id="doomHintBtn" type="button">NEXT HINT</button>
-            <button class="btn" id="doomCopyBtn" type="button">USE OUTPUT AS ANSWER</button>
+            <button class="btn" id="doomTemplateBtn" type="button">INSERT ANSWER TEMPLATE</button>
           </div>
           <div class="debug-help">Breakpoint marker: ○ none, ● active. Click a code line to toggle.</div>
         </div>
@@ -1099,7 +1102,7 @@ Console: waiting for input</div>
       const doomRunBtn = document.getElementById("doomRunBtn");
       const doomResetBtn = document.getElementById("doomResetBtn");
       const doomHintBtn = document.getElementById("doomHintBtn");
-      const doomCopyBtn = document.getElementById("doomCopyBtn");
+      const doomTemplateBtn = document.getElementById("doomTemplateBtn");
       const doomStateBadgeEl = document.getElementById("doomStateBadge");
 
       const syncDebugUi = () => {
@@ -1114,7 +1117,7 @@ Console: waiting for input</div>
 
       const runSingleStep = (ignoreBreakpoints = true) => {
         if (doomdadaDebugState.stepIdx >= doomdadaDebugSteps.length - 1) {
-          setAnswerStatus("Debugger reached the end. Use output as answer or reset.");
+          setAnswerStatus("Debugger reached the end. Use your derived result or reset.");
           return "end";
         }
         doomdadaDebugState.stepIdx += 1;
@@ -1123,7 +1126,7 @@ Console: waiting for input</div>
         doomdadaDebugState.vars = step.vars || {};
         doomdadaDebugState.stack = step.stack || ["main"];
         if (step.done) {
-          setAnswerStatus("Debug run complete. Output flag is visible in terminal.");
+          setAnswerStatus("Debug run complete. Final output is hidden; derive it from hints and trace.");
           doomStateBadgeEl.textContent = "Debugger: completed";
           syncDebugUi();
           return "done";
@@ -1154,10 +1157,9 @@ Console: waiting for input</div>
         setAnswerStatus("Debugger reset.");
       });
 
-      doomCopyBtn.addEventListener("click", () => {
-        const finalFlag = "DOOM{C0n6r@+Ul4tIoN$!}";
-        answerInputEl.value = finalFlag;
-        setAnswerStatus("Final output copied into answer field.");
+      doomTemplateBtn.addEventListener("click", () => {
+        answerInputEl.value = "DOOM{...}";
+        setAnswerStatus("Template inserted. Derive the exact inside text.");
       });
 
       doomHintBtn.addEventListener("click", () => {
