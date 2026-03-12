@@ -3,17 +3,19 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>DOOMDADA Minigame</title>
+  <title>Reverse Engineering Game - Webinar Edition</title>
   <style>
     :root {
-      --bg: #070a0f;
-      --panel: #101722;
-      --text: #f8fafc;
-      --muted: #9fb0c0;
-      --accent: #22c55e;
-      --line: #274156;
+      --bg: #03070c;
+      --panel: #121923;
+      --line: #1fdc73;
+      --line-dim: #2f4658;
+      --text: #d7e3ef;
+      --muted: #95a7b8;
+      --accent: #18ce67;
+      --hot: #e91e63;
+      --cyan: #1aa4ff;
       --warn: #facc15;
-      --danger: #ff4d6d;
     }
     * { box-sizing: border-box; }
     body {
@@ -22,304 +24,452 @@
       font-family: Consolas, "Courier New", monospace;
       color: var(--text);
       background:
-        radial-gradient(circle at 10% 10%, #0f3a31 0%, transparent 28%),
-        radial-gradient(circle at 90% 90%, #3a102a 0%, transparent 32%),
-        linear-gradient(140deg, #04060b, var(--bg));
-      display: grid;
-      place-items: center;
-      padding: 20px;
+        radial-gradient(circle at 16% 12%, #103f31 0%, transparent 28%),
+        radial-gradient(circle at 84% 92%, #3d132b 0%, transparent 32%),
+        linear-gradient(140deg, #010306, var(--bg));
+      padding: 16px;
     }
-    .panel {
-      width: min(900px, 100%);
-      background: rgba(13, 19, 29, 0.95);
-      border: 1px solid var(--line);
-      box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.25), 0 18px 40px rgba(0, 0, 0, 0.5);
-      border-radius: 14px;
+    .shell {
+      width: min(1280px, 100%);
+      margin: 0 auto;
+      border: 1px solid #16a34a;
+      background: #0b1119;
+      box-shadow: 0 0 0 2px rgba(22, 163, 74, 0.12), 0 18px 40px rgba(0, 0, 0, 0.6);
+    }
+    .ticker {
+      border-bottom: 1px solid #156d3f;
+      color: #31ff88;
+      padding: 6px 10px;
+      font-size: 12px;
+      white-space: nowrap;
       overflow: hidden;
+      text-overflow: ellipsis;
     }
-    .header {
-      padding: 16px 20px;
-      border-bottom: 1px solid var(--line);
-      background: linear-gradient(90deg, rgba(34, 197, 94, 0.16), rgba(255, 77, 109, 0.14));
+    .hero {
+      text-align: center;
+      padding: 18px 12px 10px;
+      border-bottom: 1px solid #1f2f3f;
+      background: linear-gradient(180deg, rgba(26, 164, 255, 0.06), rgba(233, 30, 99, 0.04));
     }
-    .header h1 { margin: 0; color: var(--accent); font-size: 1.3rem; }
-    .header p { margin: 8px 0 0; color: var(--muted); }
-    .body { padding: 16px; display: grid; gap: 12px; }
-    .status {
-      border: 1px solid #2f4658;
-      border-radius: 10px;
-      background: #08121d;
-      color: var(--muted);
-      padding: 12px;
-      min-height: 46px;
+    .hero pre {
+      margin: 0;
+      color: #64ff7a;
+      font-size: clamp(20px, 4vw, 50px);
+      line-height: 0.95;
+      letter-spacing: 1px;
+      text-shadow: 0 0 14px rgba(100, 255, 122, 0.3);
     }
-    .status.error { border-color: #7b2d47; background: #2a0f19; color: #ffd7e2; }
-    .grid {
-      display: grid;
-      grid-template-columns: 1.2fr 1fr;
-      gap: 12px;
+    .hero h1 {
+      margin: 8px 0 0;
+      color: #ff2d7a;
+      font-size: clamp(20px, 2vw, 36px);
     }
-    .card {
-      border: 1px solid #2f4658;
-      border-radius: 10px;
-      background: #0b141f;
-      padding: 12px;
+    .hero p { margin: 6px 0 0; color: var(--accent); font-weight: 700; }
+    .hero .cmd {
+      display: inline-block;
+      margin-top: 8px;
+      padding: 4px 8px;
+      background: #1b2633;
+      border: 1px solid #23374d;
+      color: #c8d8e8;
     }
-    .card h3 { margin: 0 0 8px; color: #93c5fd; font-size: 1rem; }
-    .terminal {
-      border: 1px solid #31485d;
-      border-radius: 8px;
-      background: #050c14;
-      color: #9ef9b6;
+    .content { padding: 14px; display: grid; gap: 12px; }
+    .label { color: #ff2d7a; font-weight: 700; font-size: 0.9rem; margin-bottom: 6px; }
+    .brief {
+      border: 2px solid var(--hot);
+      background: #1a2230;
       padding: 10px;
-      min-height: 220px;
       white-space: pre-wrap;
-      font-size: 0.9rem;
-      line-height: 1.45;
+      min-height: 80px;
+      line-height: 1.4;
     }
-    .actions {
-      margin-top: 10px;
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
       gap: 8px;
+      align-items: center;
     }
-    button {
+    .controls input[type="text"] {
+      border: 1px solid #475a6e;
+      background: #0b141e;
+      color: var(--text);
+      padding: 8px;
+      width: 160px;
+      font: inherit;
+    }
+    .btn {
+      border: 1px solid #ef2b78;
+      background: #e91e63;
+      color: #fff;
+      padding: 8px 12px;
       font: inherit;
       font-weight: 700;
-      border: 0;
-      border-radius: 9px;
-      color: #f8fafc;
-      background: linear-gradient(120deg, #0c4a6e, #0284c7);
-      padding: 11px;
       cursor: pointer;
     }
-    button:hover { filter: brightness(1.08); }
-    button:disabled { opacity: 0.45; cursor: not-allowed; }
-    button.warn { background: linear-gradient(120deg, #7c2d12, #ea580c); }
-    button.good { background: linear-gradient(120deg, #166534, #16a34a); }
-    label { display: grid; gap: 8px; font-size: 0.95rem; margin-top: 10px; }
-    input {
-      font: inherit;
+    .btn.alt {
+      background: #006aa8;
+      border-color: #2788c0;
+    }
+    .toggles {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      color: var(--muted);
+      font-size: 0.9rem;
+      padding-top: 4px;
+    }
+    .toggles label { display: flex; gap: 6px; align-items: center; }
+    .zone {
       border: 1px solid #2f4658;
-      border-radius: 9px;
-      background: #09111a;
+      background: #111927;
+      padding: 10px;
+    }
+    .game-grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 12px;
+    }
+    .levels {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .card {
+      border: 2px solid #4f5d6f;
+      background: #121c2a;
+      padding: 10px;
+    }
+    .card.active { border-color: #1aa4ff; }
+    .card.done { border-color: #22c55e; }
+    .card h3 { margin: 0; color: #8dff75; }
+    .card p { margin: 8px 0; color: #c7d5e3; }
+    .points { color: var(--warn); font-weight: 700; }
+    .runner {
+      border: 2px solid #ef2b78;
+      background: #0d1622;
+      padding: 10px;
+    }
+    .runner h3 { margin: 0 0 8px; color: #ff4a8d; }
+    .runner-log {
+      border: 1px solid #45607a;
+      background: #07111c;
+      color: #5fff8a;
+      min-height: 270px;
+      max-height: 270px;
+      overflow: auto;
+      padding: 8px;
+      white-space: pre-wrap;
+      line-height: 1.35;
+      font-size: 0.88rem;
+    }
+    .challenge {
+      border: 1px solid #2f4658;
+      background: #0f1826;
+      padding: 10px;
+      display: grid;
+      gap: 8px;
+    }
+    .challenge pre {
+      margin: 0;
+      border: 1px solid #45607a;
+      background: #08121d;
+      padding: 8px;
+      white-space: pre-wrap;
+      min-height: 95px;
+    }
+    .answer-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+    }
+    .answer-row input {
+      border: 1px solid #475a6e;
+      background: #0b141e;
       color: var(--text);
-      padding: 11px;
+      padding: 8px;
+      font: inherit;
     }
-    .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
-    .chip {
-      border: 1px solid #33506a;
-      border-radius: 999px;
-      padding: 5px 10px;
-      font-size: 0.82rem;
-      color: #b7d2ea;
-      background: #0a1623;
+    .status {
+      border: 1px solid #31495f;
+      background: #0a131f;
+      color: #a8bac9;
+      padding: 10px;
+      min-height: 40px;
     }
-    .chip.active { border-color: #22c55e; color: #b8f5cb; }
-    .chip.done { border-color: #facc15; color: #fde68a; }
-    @media (max-width: 780px) {
-      .grid { grid-template-columns: 1fr; }
-      .actions { grid-template-columns: 1fr; }
+    .status.error { border-color: #8a3554; color: #ffdbe8; background: #260f19; }
+    @media (max-width: 980px) {
+      .game-grid { grid-template-columns: 1fr; }
+      .levels { grid-template-columns: 1fr; }
+      .answer-row { grid-template-columns: 1fr; }
     }
   </style>
 </head>
 <body>
-  <main class="panel">
-    <header class="header">
-      <h1>DOOMDADA Final Boss Minigame</h1>
-      <p>Run the script stages in order, reconstruct the final flag, and submit.</p>
+  <div class="shell">
+    <div class="ticker">boot:: initializing terminal background stream | net:: handshake with virtual bridge node | root@doomdada:~$ ./reverse_engineering_game_gui.py</div>
+
+    <header class="hero">
+      <pre>DOOMDADA</pre>
+      <h1>Reverse Engineering Game</h1>
+      <p>RANDOM AHH GAME by DOOMDADA</p>
+      <div class="cmd">root@doomdada:~$ ./reverse_engineering_game_gui.py</div>
     </header>
-    <section class="body">
-      <div id="status" class="status">Minigame loaded. Start with story_seed().</div>
 
-      <div class="grid">
-        <section class="card">
-          <h3>Mini Console</h3>
-          <div id="terminalOutput" class="terminal"></div>
-          <div class="actions">
-            <button id="seedBtn" class="good">Run story_seed()</button>
-            <button id="leetBtn" disabled>Run apply_leet()</button>
-            <button id="caseBtn" disabled>Run apply_case_pattern()</button>
-            <button id="buildBtn" disabled>Run build_flag()</button>
-            <button id="resetBtn" class="warn">Reset Run</button>
-          </div>
-          <div class="chips">
-            <span id="chipSeed" class="chip">seed</span>
-            <span id="chipLeet" class="chip">leet</span>
-            <span id="chipCase" class="chip">case</span>
-            <span id="chipBuild" class="chip">build</span>
-          </div>
-        </section>
+    <section class="content">
+      <div>
+        <div class="label">Mission Brief</div>
+        <div id="missionBrief" class="brief">Reverse engineering means figuring out how a program works, even if you do not have its original code. In security, it helps us inspect how apps behave and spot possible weaknesses.</div>
+      </div>
 
-        <section class="card">
-          <h3>Submit Flag</h3>
-          <p style="margin:0;color:#9fb0c0;">Expected format: DOOM{...}</p>
-          <label>
-            Final Answer
-            <input id="answerInput" maxlength="200" placeholder="DOOM{...}" />
-          </label>
-          <div class="actions" style="margin-top:10px;">
-            <button id="submitBtn" class="good">Submit DOOMDADA Flag</button>
-          </div>
-          <div id="answerStatus" class="status" style="margin-top:10px;">Awaiting submission.</div>
-        </section>
+      <div class="controls">
+        <span>Player:</span>
+        <input id="playerName" type="text" placeholder="Presenter" />
+        <button class="btn" id="btnWhat">What is Rev. Eng?</button>
+        <button class="btn" id="btnHow">How to Play</button>
+        <button class="btn" id="btnBeginner">Beginner Tutorial</button>
+        <button class="btn" id="btnStory">Story Intro</button>
+      </div>
+
+      <div class="toggles">
+        <label><input type="checkbox" checked />Boost Mode</label>
+        <label><input type="checkbox" />Runner Hint Mode</label>
+        <label><input type="checkbox" />Mute SFX</label>
+        <label><input type="checkbox" />Timed Mode (60s)</label>
+        <label><input type="checkbox" checked />Classroom Mode</label>
+      </div>
+
+      <div class="controls">
+        <button class="btn">Leaderboard</button>
+        <button class="btn">Team Scores</button>
+        <button class="btn">Submit Score</button>
+        <button class="btn" id="btnResetProgress">Reset Score</button>
+      </div>
+
+      <div class="zone">
+        <div class="label">Choose Difficulty</div>
+        <div class="game-grid">
+          <div class="levels" id="levelsGrid"></div>
+          <aside class="runner">
+            <h3>Live Code Runner</h3>
+            <div id="runnerLog" class="runner-log"></div>
+          </aside>
+        </div>
+      </div>
+
+      <div class="challenge">
+        <div class="label" id="challengeTitle">Challenge Workspace</div>
+        <div id="challengeMeta" class="status">Select any difficulty card to load a challenge.</div>
+        <pre id="challengePrompt">Waiting for level selection...</pre>
+        <div class="answer-row">
+          <input id="answerInput" type="text" maxlength="200" placeholder="Type your flag answer here, e.g. DOOM{...}" />
+          <button class="btn alt" id="submitAnswerBtn">Submit Answer</button>
+        </div>
+        <div id="answerStatus" class="status">Ready.</div>
       </div>
     </section>
-  </main>
+  </div>
 
   <script>
     const API_BASE = window.location.protocol === "file:" ? "http://127.0.0.1:8000" : "";
-    const levelId = "doomdada";
 
-    const statusEl = document.getElementById("status");
-    const terminalEl = document.getElementById("terminalOutput");
-    const answerStatusEl = document.getElementById("answerStatus");
+    const levelsGridEl = document.getElementById("levelsGrid");
+    const runnerLogEl = document.getElementById("runnerLog");
+    const missionBriefEl = document.getElementById("missionBrief");
+    const challengeTitleEl = document.getElementById("challengeTitle");
+    const challengeMetaEl = document.getElementById("challengeMeta");
+    const challengePromptEl = document.getElementById("challengePrompt");
     const answerInputEl = document.getElementById("answerInput");
-    const submitBtn = document.getElementById("submitBtn");
+    const submitAnswerBtn = document.getElementById("submitAnswerBtn");
+    const answerStatusEl = document.getElementById("answerStatus");
 
-    const seedBtn = document.getElementById("seedBtn");
-    const leetBtn = document.getElementById("leetBtn");
-    const caseBtn = document.getElementById("caseBtn");
-    const buildBtn = document.getElementById("buildBtn");
-    const resetBtn = document.getElementById("resetBtn");
+    const btnWhat = document.getElementById("btnWhat");
+    const btnHow = document.getElementById("btnHow");
+    const btnBeginner = document.getElementById("btnBeginner");
+    const btnStory = document.getElementById("btnStory");
+    const btnResetProgress = document.getElementById("btnResetProgress");
 
-    const chipSeed = document.getElementById("chipSeed");
-    const chipLeet = document.getElementById("chipLeet");
-    const chipCase = document.getElementById("chipCase");
-    const chipBuild = document.getElementById("chipBuild");
+    let levels = [];
+    let selectedLevelId = "";
+    let score = 0;
+    const solved = new Set();
 
-    let phrase = "";
-    let stage1 = "";
-    let stage2 = "";
-    let finalFlag = "";
+    const infoBriefs = {
+      what: "Reverse engineering is analyzing a program without source code to understand hidden logic, checks, and behavior.",
+      how: "Pick a level, read prompt clues, submit a flag in DOOM{...} format, and earn points for each solved challenge.",
+      beginner: "Follow line by line. Write intermediate values. Do not guess. Match symbols and letter case exactly.",
+      story: "Bridge boy left layered clues in terminal scripts. Decode each chapter to unlock the final DOOMDADA gate.",
+    };
 
     function apiUrl(path) {
       return `${API_BASE}${path}`;
     }
 
-    function setStatus(text, isError = false) {
-      statusEl.textContent = text;
-      statusEl.classList.toggle("error", isError);
+    function setAnswerStatus(text, isError = false) {
+      answerStatusEl.textContent = text;
+      answerStatusEl.classList.toggle("error", isError);
     }
 
-    function logTerminal(text) {
-      terminalEl.textContent += `${text}\n`;
-      terminalEl.scrollTop = terminalEl.scrollHeight;
+    function logRunner(line) {
+      const stamp = new Date().toLocaleTimeString("en-US", { hour12: false });
+      runnerLogEl.textContent += `[${stamp}] ${line}\n`;
+      runnerLogEl.scrollTop = runnerLogEl.scrollHeight;
     }
 
-    function markChip(chip, mode) {
-      chip.classList.remove("active", "done");
-      if (mode) {
-        chip.classList.add(mode);
-      }
-    }
-
-    function resetRun() {
-      phrase = "";
-      stage1 = "";
-      stage2 = "";
-      finalFlag = "";
-
-      terminalEl.textContent = "root@doomdada:~$ ./boot_lockdown.sh\n[ DOOMDADA TERMINAL LOCKDOWN ]\nType-by-click execution required.\n";
-      answerInputEl.value = "";
-      answerStatusEl.textContent = "Awaiting submission.";
-      answerStatusEl.classList.remove("error");
-
-      seedBtn.disabled = false;
-      leetBtn.disabled = true;
-      caseBtn.disabled = true;
-      buildBtn.disabled = true;
-
-      markChip(chipSeed, "active");
-      markChip(chipLeet, null);
-      markChip(chipCase, null);
-      markChip(chipBuild, null);
-
-      setStatus("Minigame reset. Start with story_seed().");
-    }
-
-    seedBtn.addEventListener("click", () => {
-      phrase = "congratulations!";
-      logTerminal("root@doomdada:~$ story_seed()\n=> congratulations!");
-      seedBtn.disabled = true;
-      leetBtn.disabled = false;
-      markChip(chipSeed, "done");
-      markChip(chipLeet, "active");
-      setStatus("Seed recovered. Next: apply_leet().");
-    });
-
-    leetBtn.addEventListener("click", () => {
-      stage1 = "c0n6r@+ul@+i0n$!";
-      logTerminal("root@doomdada:~$ apply_leet(phrase)\n=> c0n6r@+ul@+i0n$!");
-      leetBtn.disabled = true;
-      caseBtn.disabled = false;
-      markChip(chipLeet, "done");
-      markChip(chipCase, "active");
-      setStatus("Leet map applied. Next: apply_case_pattern().");
-    });
-
-    caseBtn.addEventListener("click", () => {
-      stage2 = "C0n6r@+Ul4tIoN$!";
-      logTerminal("root@doomdada:~$ apply_case_pattern(stage1)\n=> C0n6r@+Ul4tIoN$!");
-      caseBtn.disabled = true;
-      buildBtn.disabled = false;
-      markChip(chipCase, "done");
-      markChip(chipBuild, "active");
-      setStatus("Case pattern complete. Next: build_flag().");
-    });
-
-    buildBtn.addEventListener("click", () => {
-      finalFlag = `DOOM{${stage2}}`;
-      logTerminal(`root@doomdada:~$ build_flag()\n=> ${finalFlag}`);
-      buildBtn.disabled = true;
-      markChip(chipBuild, "done");
-      answerInputEl.value = finalFlag;
-      setStatus("Flag assembled. Submit to clear DOOMDADA.");
-    });
-
-    submitBtn.addEventListener("click", async () => {
-      const answer = answerInputEl.value.trim();
-      if (!answer) {
-        answerStatusEl.textContent = "Answer is required.";
-        answerStatusEl.classList.add("error");
+    function renderLevels() {
+      if (!levels.length) {
+        levelsGridEl.innerHTML = "<div class='card'><p>No levels found.</p></div>";
         return;
       }
 
-      submitBtn.disabled = true;
-      answerStatusEl.textContent = "Checking answer...";
-      answerStatusEl.classList.remove("error");
+      levelsGridEl.innerHTML = levels.map((lvl) => `
+        <article class="card ${selectedLevelId === lvl.id ? "active" : ""} ${solved.has(lvl.id) ? "done" : ""}">
+          <h3>${lvl.title}</h3>
+          <p>${lvl.description}</p>
+          <div class="points">${lvl.points} points</div>
+          <div style="margin-top:10px;">
+            <button class="btn alt" data-level-id="${lvl.id}">${solved.has(lvl.id) ? "Replay" : "Play"} ${lvl.title}</button>
+          </div>
+        </article>
+      `).join("");
+
+      levelsGridEl.querySelectorAll("button[data-level-id]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const levelId = btn.getAttribute("data-level-id");
+          if (levelId) {
+            openLevel(levelId);
+          }
+        });
+      });
+    }
+
+    async function openLevel(levelId) {
+      try {
+        const res = await fetch(apiUrl(`/api/game/levels/${encodeURIComponent(levelId)}`));
+        const data = await res.json();
+        if (!res.ok) {
+          setAnswerStatus(data.detail || "Could not load challenge.", true);
+          return;
+        }
+
+        selectedLevelId = data.id;
+        challengeTitleEl.textContent = `${data.title} Challenge`;
+        challengeMetaEl.textContent = `${data.description} | ${data.points} points | Total Score: ${score}`;
+        challengePromptEl.textContent = data.challenge_prompt;
+        answerInputEl.value = "";
+        setAnswerStatus(`Loaded ${data.title}. Submit your flag.`, false);
+        logRunner(`task.inject('${data.id}_challenge')`);
+        renderLevels();
+      } catch {
+        setAnswerStatus("Network error while loading challenge.", true);
+      }
+    }
+
+    async function submitAnswer() {
+      if (!selectedLevelId) {
+        setAnswerStatus("Select a level first.", true);
+        return;
+      }
+
+      const answer = answerInputEl.value.trim();
+      if (!answer) {
+        setAnswerStatus("Answer is required.", true);
+        return;
+      }
+
+      submitAnswerBtn.disabled = true;
+      setAnswerStatus("Checking answer...", false);
 
       try {
         const res = await fetch(apiUrl("/api/game/submit"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ level_id: levelId, answer })
+          body: JSON.stringify({ level_id: selectedLevelId, answer })
         });
         const data = await res.json();
 
         if (!res.ok) {
-          answerStatusEl.textContent = data.detail || `Submit failed (HTTP ${res.status}).`;
-          answerStatusEl.classList.add("error");
+          setAnswerStatus(data.detail || `Submission failed (HTTP ${res.status}).`, true);
           return;
         }
 
-        answerStatusEl.textContent = data.message;
         if (data.correct) {
-          setStatus("DOOMDADA CLEARED. You cracked the final boss.");
-          logTerminal("[ACCESS GRANTED] Final gate unlocked.");
+          if (!solved.has(selectedLevelId)) {
+            solved.add(selectedLevelId);
+            score += data.points || 0;
+          }
+          setAnswerStatus(`${data.message} | Score: ${score}`, false);
+          challengeMetaEl.textContent = `${levels.find((x) => x.id === selectedLevelId)?.description || ""} | Score: ${score}`;
+          logRunner(`score.update(level='${selectedLevelId}', total=${score})`);
+          renderLevels();
         } else {
-          answerStatusEl.classList.add("error");
+          setAnswerStatus(data.message || "Incorrect answer.", true);
+          logRunner(`solver.reject(level='${selectedLevelId}')`);
         }
       } catch {
-        answerStatusEl.textContent = "Network error while submitting answer.";
-        answerStatusEl.classList.add("error");
+        setAnswerStatus("Network error while submitting answer.", true);
       } finally {
-        submitBtn.disabled = false;
+        submitAnswerBtn.disabled = false;
+      }
+    }
+
+    async function loadLevels() {
+      try {
+        const res = await fetch(apiUrl("/api/game/levels"));
+        if (!res.ok) {
+          setAnswerStatus("Could not fetch levels.", true);
+          return;
+        }
+        levels = await res.json();
+        renderLevels();
+        if (levels.length) {
+          openLevel(levels[0].id);
+        }
+      } catch {
+        setAnswerStatus("Network error while loading levels.", true);
+      }
+    }
+
+    function resetProgress() {
+      score = 0;
+      solved.clear();
+      renderLevels();
+      if (selectedLevelId) {
+        challengeMetaEl.textContent = `${levels.find((x) => x.id === selectedLevelId)?.description || ""} | Score: ${score}`;
+      }
+      setAnswerStatus("Progress reset.", false);
+      logRunner("state.reset(progress=true)");
+    }
+
+    const runnerLines = [
+      "[runner] main-screen code runner online",
+      "leaderboard.update(player='Presenter', mode='demo')",
+      "crazy.timer.sync(target=6.7, tol=0.12)",
+      "xhard.blocks.read(slot=7) -> clue='_7HE'",
+      "doomdada.gate.auth(user='DOOM', status='granted')",
+      "decode.medium(tag='EARLYBIRD') -> 3ARLYB1RD",
+    ];
+    let runnerIdx = 0;
+
+    setInterval(() => {
+      logRunner(runnerLines[runnerIdx % runnerLines.length]);
+      runnerIdx += 1;
+    }, 1700);
+
+    btnWhat.addEventListener("click", () => { missionBriefEl.textContent = infoBriefs.what; });
+    btnHow.addEventListener("click", () => { missionBriefEl.textContent = infoBriefs.how; });
+    btnBeginner.addEventListener("click", () => { missionBriefEl.textContent = infoBriefs.beginner; });
+    btnStory.addEventListener("click", () => { missionBriefEl.textContent = infoBriefs.story; });
+    btnResetProgress.addEventListener("click", resetProgress);
+
+    submitAnswerBtn.addEventListener("click", submitAnswer);
+    answerInputEl.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        submitAnswer();
       }
     });
 
-    resetBtn.addEventListener("click", resetRun);
-    resetRun();
+    logRunner("boot.sequence('doomdada-ui') -> ready");
+    loadLevels();
   </script>
 </body>
 </html>
