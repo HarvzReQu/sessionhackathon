@@ -230,6 +230,7 @@
     const closeChallengeBtn = document.getElementById("closeChallengeBtn");
     const answerResultEl = document.getElementById("answerResult");
     const API_BASE = window.location.protocol === "file:" ? "http://127.0.0.1:8000" : "";
+    const IS_LOCAL_HOST = ["localhost", "127.0.0.1"].includes(window.location.hostname) || window.location.protocol === "file:";
 
     let levelsLoaded = false;
     let selectedLevelId = "";
@@ -251,6 +252,21 @@
       gamePanelEl.classList.remove("hidden");
       if (!levelsLoaded) {
         loadGameLevels();
+      }
+    }
+
+    async function tryLaunchDesktopGame() {
+      if (!IS_LOCAL_HOST) {
+        return false;
+      }
+
+      try {
+        const res = await fetch(apiUrl("/api/game/launch-desktop"), {
+          method: "POST"
+        });
+        return res.ok;
+      } catch {
+        return false;
       }
     }
 
@@ -335,13 +351,23 @@
       return "";
     }
 
-    function attemptLogin() {
+    async function attemptLogin() {
       const username = usernameInputEl.value.trim();
       const password = passwordInputEl.value.trim();
 
       if (username === "Doom" && password === "Dada") {
-        setStatus("Login successful. Welcome to DOOMDADA.");
+        loginBtn.disabled = true;
+        setStatus("Login successful. Preparing game...");
+        const launched = await tryLaunchDesktopGame();
+
+        if (launched) {
+          setStatus("Desktop game launched. Use the opened game window.");
+        } else {
+          setStatus("Welcome to DOOMDADA. Opening web game screen.");
+        }
+
         showGameScreen();
+        loginBtn.disabled = false;
         return;
       }
 
