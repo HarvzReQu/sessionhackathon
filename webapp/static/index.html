@@ -561,6 +561,28 @@
       padding: 8px;
       font-size: 0.84rem;
     }
+    .panel-section {
+      border: 1px solid #2f4658;
+      background: #0d1623;
+      margin-top: 6px;
+    }
+    .panel-section summary {
+      cursor: pointer;
+      list-style: none;
+      color: #b9cce2;
+      font-weight: 700;
+      padding: 8px 10px;
+      background: #111d2d;
+      border-bottom: 1px solid #2f4658;
+    }
+    .panel-section summary::-webkit-details-marker {
+      display: none;
+    }
+    .panel-body {
+      padding: 8px;
+      display: grid;
+      gap: 8px;
+    }
     .onboard-tip {
       border: 1px solid #2f6f45;
       background: #0e1f16;
@@ -684,17 +706,39 @@
         <span>How to play: 1) Read prompt 2) Tap Need Help 3) Submit your flag.</span>
         <button class="btn alt" id="dismissOnboardBtn" type="button">Got it</button>
       </div>
-      <div id="challengeMeta" class="status">Select any difficulty card to load a challenge.</div>
-      <div id="challengeMetaBadges" class="challenge-meta-badges"></div>
-      <pre id="challengePrompt">Waiting for level selection...</pre>
-      <div class="flag-reminder">Flag format reminder: DOOM{...} (case-sensitive, symbols matter).</div>
-      <div id="specialArea" class="special-area"></div>
-      <div class="answer-row">
-        <input id="answerInput" type="text" maxlength="200" placeholder="Type your flag answer here, e.g. DOOM{...}" />
-        <button class="btn alt" id="submitAnswerBtn">Submit Answer</button>
-      </div>
-      <div id="answerStatus" class="status">Ready.</div>
-        <div class="helper-grid">
+      <details class="panel-section" open>
+        <summary>Problem</summary>
+        <div class="panel-body">
+          <div id="challengeMeta" class="status">Select any difficulty card to load a challenge.</div>
+          <div id="challengeMetaBadges" class="challenge-meta-badges"></div>
+          <pre id="challengePrompt">Waiting for level selection...</pre>
+          <div class="flag-reminder">Flag format reminder: DOOM{...} (case-sensitive, symbols matter).</div>
+          <div id="specialArea" class="special-area"></div>
+        </div>
+      </details>
+
+      <details class="panel-section" open>
+        <summary>Submit</summary>
+        <div class="panel-body">
+          <div class="answer-row">
+            <input id="answerInput" type="text" maxlength="200" placeholder="Type your flag answer here, e.g. DOOM{...}" />
+            <button class="btn alt" id="submitAnswerBtn">Submit Answer</button>
+          </div>
+          <div id="answerStatus" class="status">Ready.</div>
+        </div>
+      </details>
+
+      <details class="panel-section">
+        <summary>Progress</summary>
+        <div class="panel-body">
+          <div id="challengeProgressPanel" class="status">Solved: 0/0 | Score: 0</div>
+        </div>
+      </details>
+
+      <details class="panel-section">
+        <summary>Reference</summary>
+        <div class="panel-body">
+          <div class="helper-grid">
           <div>
             <div class="helper-buttons">
               <button class="btn" id="btnNeedHelp">Need Help?</button>
@@ -724,7 +768,9 @@ Console: waiting for input</div>
               <button class="btn alt" id="btnInsertBuild">Insert: Build Flag</button>
             </div>
           </div>
+          </div>
         </div>
+      </details>
     </div>
   </div>
 
@@ -743,6 +789,7 @@ Console: waiting for input</div>
     const challengeTitleEl = document.getElementById("challengeTitle");
     const challengeMetaEl = document.getElementById("challengeMeta");
     const challengeMetaBadgesEl = document.getElementById("challengeMetaBadges");
+    const challengeProgressPanelEl = document.getElementById("challengeProgressPanel");
     const challengePromptEl = document.getElementById("challengePrompt");
     const specialAreaEl = document.getElementById("specialArea");
     const answerInputEl = document.getElementById("answerInput");
@@ -990,6 +1037,18 @@ Console: waiting for input</div>
         doomdada: "Elite",
       };
       return map[id] || "Unknown";
+    }
+
+    function updateChallengeProgress() {
+      const total = levels.length;
+      const solvedCount = solved.size;
+      let extra = "";
+      if (selectedLevelId === "doomdada" || isDoomBlocked()) {
+        extra = isDoomBlocked()
+          ? ` | DOOMDADA: [BLOCK] ${formatCooldownClock(getDoomCooldownRemainingMs())}`
+          : ` | DOOMDADA attempts left: ${doomAttemptsLeft}`;
+      }
+      challengeProgressPanelEl.textContent = `Solved: ${solvedCount}/${total} | Score: ${score}${extra}`;
     }
 
     function logRunner(line) {
@@ -1385,6 +1444,7 @@ Console: waiting for input</div>
           openPlayModal();
         }
 
+        updateChallengeProgress();
         renderLevels();
       } catch {
         setAnswerStatus("Network error while loading challenge.", true);
@@ -1455,6 +1515,7 @@ Console: waiting for input</div>
           logRunner(`score.update(level='${selectedLevelId}', total=${score})`);
           renderSolvedBoard();
           renderPerformanceBoard();
+          updateChallengeProgress();
           renderLevels();
         } else {
           if (selectedLevelId === "doomdada") {
@@ -1476,6 +1537,7 @@ Console: waiting for input</div>
           }
           setAnswerStatus(data.message || "Incorrect answer.", true);
           logRunner(`solver.reject(level='${selectedLevelId}')`);
+          updateChallengeProgress();
         }
       } catch {
         setAnswerStatus("Network error while submitting answer.", true);
@@ -1493,6 +1555,7 @@ Console: waiting for input</div>
         }
         levels = await res.json();
         await syncDoomdadaStatus();
+        updateChallengeProgress();
         renderLevels();
         if (levels.length) {
           openLevel(levels[0].id);
@@ -1522,6 +1585,7 @@ Console: waiting for input</div>
       logRunner("state.reset(progress=true)");
       renderSolvedBoard();
       renderPerformanceBoard();
+      updateChallengeProgress();
     }
 
     const runnerLines = [
@@ -1540,11 +1604,13 @@ Console: waiting for input</div>
 
       if (isDoomBlocked()) {
         doomCooldownLastTick = true;
+        updateChallengeProgress();
         renderLevels();
       } else if (doomCooldownLastTick) {
         doomCooldownLastTick = false;
         renderLevels();
         setAnswerStatus("DOOMDADA cooldown ended. Level reopened.");
+        updateChallengeProgress();
       }
     }, 1700);
 
@@ -1589,6 +1655,7 @@ Console: waiting for input</div>
     logRunner("boot.sequence('doomdada-ui') -> ready");
     renderSolvedBoard();
     renderPerformanceBoard();
+    updateChallengeProgress();
     loadLevels();
   </script>
 </body>
