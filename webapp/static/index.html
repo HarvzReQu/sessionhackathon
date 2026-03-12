@@ -233,6 +233,47 @@
       min-height: 40px;
     }
     .status.error { border-color: #8a3554; color: #ffdbe8; background: #260f19; }
+    .challenge-teaser {
+      border: 1px solid #31495f;
+      background: #0a131f;
+      color: #a8bac9;
+      padding: 10px;
+    }
+    .modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(1, 5, 10, 0.82);
+      display: grid;
+      place-items: center;
+      padding: 16px;
+      z-index: 999;
+    }
+    .modal.hidden { display: none; }
+    .modal-card {
+      width: min(980px, 100%);
+      max-height: 92vh;
+      overflow: auto;
+      border: 1px solid #3f5c77;
+      background: #0c1521;
+      box-shadow: 0 18px 34px rgba(0, 0, 0, 0.6);
+      padding: 12px;
+      display: grid;
+      gap: 8px;
+    }
+    .modal-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border: 1px solid #2f4658;
+      background: #101a29;
+      padding: 8px;
+      gap: 8px;
+    }
+    .modal-head h3 {
+      margin: 0;
+      color: #8dff75;
+      font-size: 1rem;
+    }
     @media (max-width: 980px) {
       .game-grid { grid-template-columns: 1fr; }
       .levels { grid-template-columns: 1fr; }
@@ -292,18 +333,25 @@
         </div>
       </div>
 
-      <div class="challenge">
-        <div class="label" id="challengeTitle">Challenge Workspace</div>
-        <div id="challengeMeta" class="status">Select any difficulty card to load a challenge.</div>
-        <pre id="challengePrompt">Waiting for level selection...</pre>
-        <div id="specialArea" class="special-area"></div>
-        <div class="answer-row">
-          <input id="answerInput" type="text" maxlength="200" placeholder="Type your flag answer here, e.g. DOOM{...}" />
-          <button class="btn alt" id="submitAnswerBtn">Submit Answer</button>
-        </div>
-        <div id="answerStatus" class="status">Ready.</div>
-      </div>
+      <div class="challenge-teaser">Click any Play button to open that challenge in a focused game window.</div>
     </section>
+  </div>
+
+  <div id="playModal" class="modal hidden">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3 id="challengeTitle">Challenge Workspace</h3>
+        <button class="btn" id="closeModalBtn" type="button">Close</button>
+      </div>
+      <div id="challengeMeta" class="status">Select any difficulty card to load a challenge.</div>
+      <pre id="challengePrompt">Waiting for level selection...</pre>
+      <div id="specialArea" class="special-area"></div>
+      <div class="answer-row">
+        <input id="answerInput" type="text" maxlength="200" placeholder="Type your flag answer here, e.g. DOOM{...}" />
+        <button class="btn alt" id="submitAnswerBtn">Submit Answer</button>
+      </div>
+      <div id="answerStatus" class="status">Ready.</div>
+    </div>
   </div>
 
   <script>
@@ -319,6 +367,8 @@
     const answerInputEl = document.getElementById("answerInput");
     const submitAnswerBtn = document.getElementById("submitAnswerBtn");
     const answerStatusEl = document.getElementById("answerStatus");
+    const playModalEl = document.getElementById("playModal");
+    const closeModalBtn = document.getElementById("closeModalBtn");
 
     const btnWhat = document.getElementById("btnWhat");
     const btnHow = document.getElementById("btnHow");
@@ -378,10 +428,18 @@
         btn.addEventListener("click", () => {
           const levelId = btn.getAttribute("data-level-id");
           if (levelId) {
-            openLevel(levelId);
+            openLevel(levelId, true);
           }
         });
       });
+    }
+
+    function openPlayModal() {
+      playModalEl.classList.remove("hidden");
+    }
+
+    function closePlayModal() {
+      playModalEl.classList.add("hidden");
     }
 
     function clearSpecialArea() {
@@ -554,7 +612,7 @@
       });
     }
 
-    async function openLevel(levelId) {
+    async function openLevel(levelId, openModal = false) {
       try {
         const res = await fetch(apiUrl(`/api/game/levels/${encodeURIComponent(levelId)}`));
         const data = await res.json();
@@ -578,6 +636,10 @@
           renderCrazyMode();
         } else if (data.id === "doomdada") {
           renderDoomdadaGate();
+        }
+
+        if (openModal) {
+          openPlayModal();
         }
 
         renderLevels();
@@ -720,6 +782,12 @@
     btnBeginner.addEventListener("click", () => { missionBriefEl.textContent = infoBriefs.beginner; });
     btnStory.addEventListener("click", () => { missionBriefEl.textContent = infoBriefs.story; });
     btnResetProgress.addEventListener("click", resetProgress);
+    closeModalBtn.addEventListener("click", closePlayModal);
+    playModalEl.addEventListener("click", (event) => {
+      if (event.target === playModalEl) {
+        closePlayModal();
+      }
+    });
 
     submitAnswerBtn.addEventListener("click", submitAnswer);
     answerInputEl.addEventListener("keydown", (event) => {
