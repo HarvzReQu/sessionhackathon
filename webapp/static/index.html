@@ -162,6 +162,60 @@
       line-height: 1.35;
       font-size: 0.88rem;
     }
+    .solved-board {
+      margin-top: 10px;
+      border: 1px solid #45607a;
+      background: #07111c;
+      padding: 8px;
+    }
+    .solved-board h4 {
+      margin: 0 0 8px;
+      color: #8dff75;
+      font-size: 0.92rem;
+    }
+    .solved-list {
+      margin: 0;
+      padding-left: 18px;
+      color: #d7e3ef;
+      line-height: 1.4;
+      font-size: 0.88rem;
+      min-height: 54px;
+    }
+    .solved-empty {
+      color: #95a7b8;
+      font-size: 0.86rem;
+    }
+    .perf-board {
+      margin-top: 10px;
+      border: 1px solid #45607a;
+      background: #07111c;
+      padding: 8px;
+    }
+    .perf-board h4 {
+      margin: 0 0 8px;
+      color: #8dff75;
+      font-size: 0.92rem;
+    }
+    .perf-meta {
+      display: grid;
+      gap: 4px;
+      font-size: 0.86rem;
+      color: #d7e3ef;
+      margin-bottom: 8px;
+    }
+    .perf-chart {
+      width: 100%;
+      height: auto;
+      border: 1px solid #2f4658;
+      background: #050c14;
+      display: block;
+    }
+    .perf-note {
+      color: #95a7b8;
+      font-size: 0.8rem;
+      margin-top: 6px;
+      line-height: 1.35;
+    }
     .challenge {
       border: 1px solid #2f4658;
       background: #0f1826;
@@ -253,6 +307,91 @@
       color: #ffd1e2;
       padding: 10px;
     }
+    .debug-lab {
+      border: 1px solid #35506a;
+      background: #08131f;
+      padding: 8px;
+      display: grid;
+      gap: 8px;
+    }
+    .debug-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.86rem;
+      color: #9db4c8;
+    }
+    .debug-layout {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 8px;
+    }
+    .debug-code,
+    .debug-output {
+      border: 1px solid #2f4658;
+      background: #050c14;
+      min-height: 180px;
+      padding: 8px;
+      overflow: auto;
+    }
+    .debug-line {
+      font-size: 0.85rem;
+      color: #d7e3ef;
+      line-height: 1.4;
+      white-space: pre;
+      padding: 1px 4px;
+      border-radius: 2px;
+      cursor: pointer;
+    }
+    .debug-line .bp {
+      display: inline-block;
+      width: 12px;
+      color: #42586e;
+      margin-right: 4px;
+    }
+    .debug-line.breakpoint .bp {
+      color: #ef4444;
+    }
+    .debug-line.active {
+      background: rgba(26, 164, 255, 0.2);
+      outline: 1px solid #1aa4ff;
+    }
+    .debug-output {
+      color: #9ef9b6;
+      white-space: pre-wrap;
+      line-height: 1.35;
+      font-size: 0.84rem;
+    }
+    .debug-vars {
+      border: 1px solid #2f4658;
+      background: #0b141f;
+      padding: 8px;
+      color: #c7d6e5;
+      white-space: pre-wrap;
+      font-size: 0.84rem;
+      line-height: 1.35;
+    }
+    .debug-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .call-stack {
+      border: 1px solid #2f4658;
+      background: #08121d;
+      padding: 8px;
+      color: #b9cbe0;
+      white-space: pre-wrap;
+      font-size: 0.83rem;
+      line-height: 1.35;
+      margin-top: 8px;
+    }
+    .debug-help {
+      color: #8fa5ba;
+      font-size: 0.8rem;
+      line-height: 1.35;
+    }
     .answer-row {
       display: grid;
       grid-template-columns: 1fr auto;
@@ -332,6 +471,7 @@
       .answer-row { grid-template-columns: 1fr; }
       .helper-grid { grid-template-columns: 1fr; }
       .helper-buttons { grid-template-columns: 1fr; }
+      .debug-layout { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -383,6 +523,20 @@
           <aside class="runner">
             <h3>Live Code Runner</h3>
             <div id="runnerLog" class="runner-log"></div>
+            <div class="solved-board">
+              <h4>Solved Problems</h4>
+              <ol id="solvedList" class="solved-list"></ol>
+              <div id="solvedEmpty" class="solved-empty">No problems solved yet.</div>
+            </div>
+            <div class="perf-board">
+              <h4>Player Performance</h4>
+              <div class="perf-meta">
+                <div>Player Name: <span id="perfPlayerName">Presenter</span></div>
+                <div>Points: <span id="perfPoints">0</span></div>
+              </div>
+              <svg id="perfChart" class="perf-chart" viewBox="0 0 320 150" preserveAspectRatio="none" role="img" aria-label="Time and points graph"></svg>
+              <div class="perf-note">Green line = solve time interval (seconds). Blue line = cumulative points.</div>
+            </div>
           </aside>
         </div>
       </div>
@@ -448,6 +602,12 @@ Console: waiting for input</div>
 
     const levelsGridEl = document.getElementById("levelsGrid");
     const runnerLogEl = document.getElementById("runnerLog");
+    const solvedListEl = document.getElementById("solvedList");
+    const solvedEmptyEl = document.getElementById("solvedEmpty");
+    const perfPlayerNameEl = document.getElementById("perfPlayerName");
+    const perfPointsEl = document.getElementById("perfPoints");
+    const perfChartEl = document.getElementById("perfChart");
+    const playerNameEl = document.getElementById("playerName");
     const missionBriefEl = document.getElementById("missionBrief");
     const challengeTitleEl = document.getElementById("challengeTitle");
     const challengeMetaEl = document.getElementById("challengeMeta");
@@ -500,6 +660,80 @@ Console: waiting for input</div>
     let doomAttemptsLeft = 3;
     let xhardState = null;
     let crazyState = { running: false, startAt: 0, timerId: null };
+    const levelStartTimes = new Map();
+    const solvedSummaries = new Map();
+    const solvedTimeline = [];
+    let doomdadaDebugState = null;
+    const doomdadaHints = [
+      "Hint 1: story_seed() returns the base text.",
+      "Hint 2: apply_leet() changes o,g,a,t,s into 0,6,@,+,$.",
+      "Hint 3: apply_case_pattern() uppercases indexes 0, 7, 8, 10, 12.",
+      "Hint 4: Wrap final stage inside DOOM{...}.",
+    ];
+
+    const doomdadaScriptCode = `# DOOMDADA Final Script: Bridge Boy Cipher
+  # Story: A boy lives under the bridge and writes clues in code.
+  # Your mission is to reconstruct his final access flag.
+
+  def story_seed() -> str:
+    """The boy's note says: 'When they finally see me, they say this word.'"""
+    return "congratulations!"
+
+  def apply_leet(text: str) -> str:
+    # Symbol swaps from his notebook
+    table = {"o": "0", "g": "6", "a": "@", "t": "+", "s": "$"}
+    return "".join(table.get(ch, ch) for ch in text.lower())
+
+  def apply_case_pattern(text: str) -> str:
+    # Uppercase indexes from graffiti marks (0-based): 0, 7, 8, 10, 12
+    upper_idx = {0, 7, 8, 10, 12}
+    out = []
+    for i, ch in enumerate(text):
+      out.append(ch.upper() if i in upper_idx else ch.lower())
+    return "".join(out)
+
+  def build_flag() -> str:
+    phrase = story_seed()
+    stage1 = apply_leet(phrase)
+    stage2 = apply_case_pattern(stage1)
+    return f"DOOM{{{stage2}}}"
+
+  # QUESTION:
+  # What is the exact output of build_flag()?
+  # Submit exactly, including symbols and uppercase/lowercase.`;
+
+      const doomdadaDebugLines = [
+        "def story_seed() -> str:",
+        "    return \"congratulations!\"",
+        "",
+        "def apply_leet(text: str) -> str:",
+        "    table = {\"o\": \"0\", \"g\": \"6\", \"a\": \"@\", \"t\": \"+\", \"s\": \"$\"}",
+        "    return \"\".join(table.get(ch, ch) for ch in text.lower())",
+        "",
+        "def apply_case_pattern(text: str) -> str:",
+        "    upper_idx = {0, 7, 8, 10, 12}",
+        "    out = []",
+        "    for i, ch in enumerate(text):",
+        "        out.append(ch.upper() if i in upper_idx else ch.lower())",
+        "    return \"\".join(out)",
+        "",
+        "def build_flag() -> str:",
+        "    phrase = story_seed()",
+        "    stage1 = apply_leet(phrase)",
+        "    stage2 = apply_case_pattern(stage1)",
+        "    return f\"DOOM{{{stage2}}}\"",
+        "",
+        "print(build_flag())",
+      ];
+
+      const doomdadaDebugSteps = [
+        { line: 16, log: "[step] phrase = story_seed()", vars: { phrase: "congratulations!" }, stack: ["main", "build_flag", "story_seed"] },
+        { line: 17, log: "[step] stage1 = apply_leet(phrase)", vars: { phrase: "congratulations!", stage1: "c0n6r@+ul@+i0n$!" }, stack: ["main", "build_flag", "apply_leet"] },
+        { line: 18, log: "[step] stage2 = apply_case_pattern(stage1)", vars: { phrase: "congratulations!", stage1: "c0n6r@+ul@+i0n$!", stage2: "C0n6r@+Ul4tIoN$!" }, stack: ["main", "build_flag", "apply_case_pattern"] },
+        { line: 19, log: "[step] return DOOM{C0n6r@+Ul4tIoN$!}", vars: { flag: "DOOM{C0n6r@+Ul4tIoN$!}" }, stack: ["main", "build_flag"] },
+        { line: 21, log: "[stdout] DOOM{C0n6r@+Ul4tIoN$!}", vars: { flag: "DOOM{C0n6r@+Ul4tIoN$!}" }, stack: ["main"], done: true },
+      ];
+      const doomdadaBreakpointLines = new Set(doomdadaDebugSteps.map((step) => step.line));
 
     const infoBriefs = {
       what: "Reverse engineering is analyzing a program without source code to understand hidden logic, checks, and behavior.",
@@ -643,6 +877,85 @@ Console: waiting for input</div>
       runnerLogEl.scrollTop = runnerLogEl.scrollHeight;
     }
 
+    function formatElapsed(seconds) {
+      const total = Math.max(0, Math.round(seconds));
+      const mins = Math.floor(total / 60);
+      const secs = total % 60;
+      return `${mins}min and ${secs}secs`;
+    }
+
+    function renderSolvedBoard() {
+      const entries = Array.from(solvedSummaries.entries());
+      solvedListEl.innerHTML = entries.map(([levelId, data]) => {
+        const title = levels.find((lvl) => lvl.id === levelId)?.title || levelId.toUpperCase();
+        return `<li>Problem Solved: ${title}, Time: ${formatElapsed(data.seconds)}</li>`;
+      }).join("");
+      solvedEmptyEl.style.display = entries.length ? "none" : "block";
+    }
+
+    function renderPerformanceBoard() {
+      const playerName = (playerNameEl.value || "Presenter").trim() || "Presenter";
+      perfPlayerNameEl.textContent = playerName;
+      perfPointsEl.textContent = String(score);
+
+      const width = 320;
+      const height = 150;
+      const left = 26;
+      const right = width - 10;
+      const top = 10;
+      const bottom = height - 18;
+
+      const graphW = right - left;
+      const graphH = bottom - top;
+      const count = solvedTimeline.length;
+      const times = solvedTimeline.map((x) => x.seconds);
+      const cumPoints = solvedTimeline.map((_, idx) => solvedTimeline.slice(0, idx + 1).reduce((sum, item) => sum + item.points, 0));
+      const maxTime = Math.max(1, ...times);
+      const maxPoints = Math.max(1, ...cumPoints);
+
+      const pointsToPath = (values, maxVal) => {
+        if (!values.length) {
+          return "";
+        }
+        return values.map((val, idx) => {
+          const x = left + (count <= 1 ? graphW / 2 : (idx / (count - 1)) * graphW);
+          const y = bottom - (val / maxVal) * graphH;
+          return `${x.toFixed(2)},${y.toFixed(2)}`;
+        }).join(" ");
+      };
+
+      const timePath = pointsToPath(times, maxTime);
+      const pointsPath = pointsToPath(cumPoints, maxPoints);
+
+      let dots = "";
+      solvedTimeline.forEach((item, idx) => {
+        const x = left + (count <= 1 ? graphW / 2 : (idx / (count - 1)) * graphW);
+        const yTime = bottom - (item.seconds / maxTime) * graphH;
+        const yPoints = bottom - (cumPoints[idx] / maxPoints) * graphH;
+        dots += `<circle cx="${x.toFixed(2)}" cy="${yTime.toFixed(2)}" r="2.6" fill="#22c55e"></circle>`;
+        dots += `<circle cx="${x.toFixed(2)}" cy="${yPoints.toFixed(2)}" r="2.6" fill="#1aa4ff"></circle>`;
+      });
+
+      const labels = count
+        ? solvedTimeline.map((item, idx) => {
+            const x = left + (count <= 1 ? graphW / 2 : (idx / (count - 1)) * graphW);
+            const title = levels.find((lvl) => lvl.id === item.levelId)?.title || item.levelId.toUpperCase();
+            return `<text x="${x.toFixed(2)}" y="146" text-anchor="middle" font-size="8" fill="#9fb2c4">${title.slice(0, 4)}</text>`;
+          }).join("")
+        : "<text x=\"160\" y=\"82\" text-anchor=\"middle\" font-size=\"10\" fill=\"#7f95ab\">Solve a level to generate graph</text>";
+
+      perfChartEl.innerHTML = `
+        <line x1="${left}" y1="${bottom}" x2="${right}" y2="${bottom}" stroke="#30475c" stroke-width="1"></line>
+        <line x1="${left}" y1="${top}" x2="${left}" y2="${bottom}" stroke="#30475c" stroke-width="1"></line>
+        ${timePath ? `<polyline points="${timePath}" fill="none" stroke="#22c55e" stroke-width="2"></polyline>` : ""}
+        ${pointsPath ? `<polyline points="${pointsPath}" fill="none" stroke="#1aa4ff" stroke-width="2"></polyline>` : ""}
+        ${dots}
+        <text x="12" y="12" font-size="8" fill="#22c55e">time</text>
+        <text x="42" y="12" font-size="8" fill="#1aa4ff">points</text>
+        ${labels}
+      `;
+    }
+
     function renderLevels() {
       if (!levels.length) {
         levelsGridEl.innerHTML = "<div class='card'><p>No levels found.</p></div>";
@@ -705,6 +1018,177 @@ Console: waiting for input</div>
       specialAreaEl.innerHTML = "";
       answerInputEl.disabled = false;
       submitAnswerBtn.disabled = false;
+      doomdadaDebugState = null;
+    }
+
+    function renderDoomdadaCodeView(activeLine = -1, breakpoints = new Set()) {
+      return doomdadaDebugLines.map((line, idx) => {
+        const lineNum = idx + 1;
+        const lineNo = String(lineNum).padStart(2, "0");
+        const active = idx + 1 === activeLine ? "active" : "";
+        const bp = breakpoints.has(lineNum) ? "breakpoint" : "";
+        const marker = breakpoints.has(lineNum) ? "●" : "○";
+        return `<div class="debug-line ${active} ${bp}" data-line="${lineNum}"><span class="bp">${marker}</span>${lineNo}  ${line}</div>`;
+      }).join("");
+    }
+
+    function formatDebugVars(varsObj) {
+      const keys = Object.keys(varsObj || {});
+      if (!keys.length) {
+        return "Locals\n- (empty)";
+      }
+      return `Locals\n${keys.map((k) => `${k} = ${varsObj[k]}`).join("\n")}`;
+    }
+
+    function formatCallStack(stack) {
+      if (!stack || !stack.length) {
+        return "Call Stack\n- main";
+      }
+      return `Call Stack\n${stack.map((frame, idx) => `${idx}. ${frame}`).join("\n")}`;
+    }
+
+    function renderDoomdadaWorkbench() {
+      answerInputEl.disabled = false;
+      submitAnswerBtn.disabled = false;
+      specialAreaEl.classList.add("active");
+
+      doomdadaDebugState = {
+        stepIdx: -1,
+        terminalLines: [
+          "DOOMDADA Debug Lab booted.",
+          "Mode: VSCode/GDB-style stepping",
+          "Tip: Click code lines to toggle breakpoints.",
+          "Tip: Use STEP to walk line-by-line, or RUN to execute until a breakpoint.",
+        ],
+        vars: {},
+        stack: ["main"],
+        breakpoints: new Set([17, 18, 19]),
+        hintIdx: 0,
+      };
+
+      specialAreaEl.innerHTML = `
+        <div class="debug-lab">
+          <div class="debug-head">
+            <span>DOOMDADA Debug Lab | Workspace: bridge_cipher.py</span>
+            <span id="doomStateBadge">Debugger: ready</span>
+          </div>
+          <div class="debug-layout">
+            <div id="doomCode" class="debug-code">${renderDoomdadaCodeView(-1, doomdadaDebugState.breakpoints)}</div>
+            <div>
+              <div id="doomOutput" class="debug-output">${doomdadaDebugState.terminalLines.join("\n")}</div>
+              <div id="doomVars" class="debug-vars" style="margin-top:8px;">${formatDebugVars(doomdadaDebugState.vars)}</div>
+              <div id="doomStack" class="call-stack">${formatCallStack(doomdadaDebugState.stack)}</div>
+            </div>
+          </div>
+          <div class="debug-controls">
+            <button class="btn alt" id="doomStepBtn" type="button">STEP</button>
+            <button class="btn alt" id="doomRunBtn" type="button">RUN TO END</button>
+            <button class="btn alt" id="doomResetBtn" type="button">RESET DEBUG</button>
+            <button class="btn alt" id="doomHintBtn" type="button">NEXT HINT</button>
+            <button class="btn" id="doomCopyBtn" type="button">USE OUTPUT AS ANSWER</button>
+          </div>
+          <div class="debug-help">Breakpoint marker: ○ none, ● active. Click a code line to toggle.</div>
+        </div>
+      `;
+
+      const doomCodeEl = document.getElementById("doomCode");
+      const doomOutputEl = document.getElementById("doomOutput");
+      const doomVarsEl = document.getElementById("doomVars");
+      const doomStackEl = document.getElementById("doomStack");
+      const doomStepBtn = document.getElementById("doomStepBtn");
+      const doomRunBtn = document.getElementById("doomRunBtn");
+      const doomResetBtn = document.getElementById("doomResetBtn");
+      const doomHintBtn = document.getElementById("doomHintBtn");
+      const doomCopyBtn = document.getElementById("doomCopyBtn");
+      const doomStateBadgeEl = document.getElementById("doomStateBadge");
+
+      const syncDebugUi = () => {
+        const activeStep = doomdadaDebugSteps[Math.max(0, doomdadaDebugState.stepIdx)] || null;
+        doomCodeEl.innerHTML = renderDoomdadaCodeView(activeStep ? activeStep.line : -1, doomdadaDebugState.breakpoints);
+        doomOutputEl.textContent = doomdadaDebugState.terminalLines.join("\n");
+        doomOutputEl.scrollTop = doomOutputEl.scrollHeight;
+        doomVarsEl.textContent = formatDebugVars(doomdadaDebugState.vars);
+        doomStackEl.textContent = formatCallStack(doomdadaDebugState.stack);
+        doomStateBadgeEl.textContent = activeStep && activeStep.done ? "Debugger: completed" : "Debugger: paused";
+      };
+
+      const runSingleStep = (ignoreBreakpoints = true) => {
+        if (doomdadaDebugState.stepIdx >= doomdadaDebugSteps.length - 1) {
+          setAnswerStatus("Debugger reached the end. Use output as answer or reset.");
+          return "end";
+        }
+        doomdadaDebugState.stepIdx += 1;
+        const step = doomdadaDebugSteps[doomdadaDebugState.stepIdx];
+        doomdadaDebugState.terminalLines.push(step.log);
+        doomdadaDebugState.vars = step.vars || {};
+        doomdadaDebugState.stack = step.stack || ["main"];
+        if (step.done) {
+          setAnswerStatus("Debug run complete. Output flag is visible in terminal.");
+          doomStateBadgeEl.textContent = "Debugger: completed";
+          syncDebugUi();
+          return "done";
+        }
+        if (!ignoreBreakpoints && doomdadaDebugState.breakpoints.has(step.line)) {
+          setAnswerStatus(`Paused at breakpoint on line ${step.line}.`);
+          doomStateBadgeEl.textContent = "Debugger: breakpoint hit";
+          syncDebugUi();
+          return "paused";
+        }
+        syncDebugUi();
+        return "continue";
+      };
+
+      doomStepBtn.addEventListener("click", () => runSingleStep(true));
+
+      doomRunBtn.addEventListener("click", () => {
+        while (doomdadaDebugState.stepIdx < doomdadaDebugSteps.length - 1) {
+          const state = runSingleStep(false);
+          if (state === "paused" || state === "done" || state === "end") {
+            break;
+          }
+        }
+      });
+
+      doomResetBtn.addEventListener("click", () => {
+        renderDoomdadaWorkbench();
+        setAnswerStatus("Debugger reset.");
+      });
+
+      doomCopyBtn.addEventListener("click", () => {
+        const finalFlag = "DOOM{C0n6r@+Ul4tIoN$!}";
+        answerInputEl.value = finalFlag;
+        setAnswerStatus("Final output copied into answer field.");
+      });
+
+      doomHintBtn.addEventListener("click", () => {
+        const msg = doomdadaHints[Math.min(doomdadaDebugState.hintIdx, doomdadaHints.length - 1)];
+        doomdadaDebugState.hintIdx += 1;
+        doomdadaDebugState.terminalLines.push(`[hint] ${msg}`);
+        setAnswerStatus(msg);
+        syncDebugUi();
+      });
+
+      doomCodeEl.addEventListener("click", (event) => {
+        const lineEl = event.target.closest(".debug-line");
+        if (!lineEl) {
+          return;
+        }
+        const line = Number(lineEl.getAttribute("data-line"));
+        if (!doomdadaBreakpointLines.has(line)) {
+          setAnswerStatus(`Line ${line} is not a runtime step line.`, true);
+          return;
+        }
+        if (doomdadaDebugState.breakpoints.has(line)) {
+          doomdadaDebugState.breakpoints.delete(line);
+          setAnswerStatus(`Breakpoint removed at line ${line}.`);
+        } else {
+          doomdadaDebugState.breakpoints.add(line);
+          setAnswerStatus(`Breakpoint set at line ${line}.`);
+        }
+        syncDebugUi();
+      });
+
+      syncDebugUi();
     }
 
     function renderXhardMode() {
@@ -830,7 +1314,7 @@ Console: waiting for input</div>
 
     function renderDoomdadaGate() {
       if (doomGateUnlocked) {
-        clearSpecialArea();
+        renderDoomdadaWorkbench();
         return;
       }
 
@@ -853,10 +1337,10 @@ Console: waiting for input</div>
         const guess = gateInput.value.trim().toUpperCase();
         if (guess === "WATERMELON") {
           doomGateUnlocked = true;
-          clearSpecialArea();
           answerInputEl.disabled = false;
           submitAnswerBtn.disabled = false;
-          setAnswerStatus("Access granted. DOOMDADA challenge unlocked.");
+          renderDoomdadaWorkbench();
+          setAnswerStatus("Access granted. DOOMDADA debugger lab unlocked.");
           return;
         }
         setAnswerStatus("ACCESS DENIED. Wrong gate password.", true);
@@ -882,10 +1366,11 @@ Console: waiting for input</div>
         selectedLevelId = data.id;
         challengeTitleEl.textContent = `${data.title} Challenge`;
         challengeMetaEl.textContent = `${data.description} | ${data.points} points | Total Score: ${score}`;
-        challengePromptEl.textContent = data.challenge_prompt;
+        challengePromptEl.textContent = data.id === "doomdada" ? doomdadaScriptCode : data.challenge_prompt;
         answerInputEl.value = "";
         setAnswerStatus(`Loaded ${data.title}. Submit your flag.`, false);
         logRunner(`task.inject('${data.id}_challenge')`);
+        levelStartTimes.set(data.id, performance.now());
         guidancePanelEl.textContent = "Welcome to the guidance panel.\nClick any helper button to show explanations while the challenge stays visible.";
         miniConsoleEl.textContent = "# Try Python here. Examples:\n# build_flag()\n# result = build_flag(); print(result)\n\nConsole: waiting for input";
         setRecommendedHelpers(data.id);
@@ -947,16 +1432,30 @@ Console: waiting for input</div>
         }
 
         if (data.correct) {
+          const levelStartAt = levelStartTimes.get(selectedLevelId);
+          const elapsedSeconds = levelStartAt ? (performance.now() - levelStartAt) / 1000 : 0;
+          const previous = solvedSummaries.get(selectedLevelId);
+          if (!previous || elapsedSeconds < previous.seconds) {
+            solvedSummaries.set(selectedLevelId, { seconds: elapsedSeconds });
+          }
           if (!solved.has(selectedLevelId)) {
             solved.add(selectedLevelId);
             score += data.points || 0;
+            solvedTimeline.push({
+              levelId: selectedLevelId,
+              seconds: elapsedSeconds,
+              points: data.points || 0,
+            });
           }
           if (selectedLevelId === "doomdada") {
             doomAttemptsLeft = 3;
           }
-          setAnswerStatus(`${data.message} | Score: ${score}`, false);
+          const solvedTitle = levels.find((x) => x.id === selectedLevelId)?.title || selectedLevelId.toUpperCase();
+          setAnswerStatus(`${data.message} | Problem Solved: ${solvedTitle}, Time: ${formatElapsed(elapsedSeconds)} | Score: ${score}`, false);
           challengeMetaEl.textContent = `${levels.find((x) => x.id === selectedLevelId)?.description || ""} | Score: ${score}`;
           logRunner(`score.update(level='${selectedLevelId}', total=${score})`);
+          renderSolvedBoard();
+          renderPerformanceBoard();
           renderLevels();
         } else {
           if (selectedLevelId === "doomdada") {
@@ -1009,6 +1508,9 @@ Console: waiting for input</div>
     function resetProgress() {
       score = 0;
       solved.clear();
+      solvedSummaries.clear();
+      levelStartTimes.clear();
+      solvedTimeline.length = 0;
       doomAttemptsLeft = 3;
       doomGateUnlocked = false;
       if (crazyState.timerId) {
@@ -1021,6 +1523,8 @@ Console: waiting for input</div>
       }
       setAnswerStatus("Progress reset.", false);
       logRunner("state.reset(progress=true)");
+      renderSolvedBoard();
+      renderPerformanceBoard();
     }
 
     const runnerLines = [
@@ -1043,6 +1547,7 @@ Console: waiting for input</div>
     btnBeginner.addEventListener("click", () => { missionBriefEl.textContent = infoBriefs.beginner; });
     btnStory.addEventListener("click", () => { missionBriefEl.textContent = infoBriefs.story; });
     btnResetProgress.addEventListener("click", resetProgress);
+    playerNameEl.addEventListener("input", renderPerformanceBoard);
     closeModalBtn.addEventListener("click", closePlayModal);
     dismissOnboardBtn.addEventListener("click", () => {
       onboardTipEl.classList.add("hidden");
@@ -1076,6 +1581,8 @@ Console: waiting for input</div>
     btnInsertBuild.addEventListener("click", () => appendMiniConsole("flag = build_flag()  # DOOM{C0n6r@+Ul4tIoN$!}"));
 
     logRunner("boot.sequence('doomdada-ui') -> ready");
+    renderSolvedBoard();
+    renderPerformanceBoard();
     loadLevels();
   </script>
 </body>
