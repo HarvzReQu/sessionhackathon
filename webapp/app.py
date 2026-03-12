@@ -184,6 +184,8 @@ class DoomdadaGuard:
 GAME_LEVELS: list[GameLevel] = [
     GameLevel(id="easy", title="Easy", points=50, description="Bridge Note - Warm-up Word"),
     GameLevel(id="medium", title="Medium", points=100, description="Earl's Tag - EARLYBIRD Cipher"),
+    GameLevel(id="mediumplus1", title="Medium+ 1", points=125, description="Split and Rebuild - Ordered Packet"),
+    GameLevel(id="mediumplus2", title="Medium+ 2", points=140, description="Layered Transform - Reverse and Replace"),
     GameLevel(id="hard", title="Hard", points=150, description="Mask Pattern - Case Control"),
     GameLevel(id="xhard", title="XHARD", points=200, description="Block Hunt - Story Clue Puzzle"),
     GameLevel(id="crazy", title="CRAZY", points=250, description="Reaction Core - Precision Timing"),
@@ -193,6 +195,8 @@ GAME_LEVELS: list[GameLevel] = [
 GAME_LEVEL_PROMPTS: dict[str, str] = {
     "easy": "Unscramble PMTOOCBA and submit with format DOOM{WORD}.",
     "medium": "Start from EARLYBIRD. Apply E->3 and I->1. Submit with exact inner quotes.",
+    "mediumplus1": "Packet shards: C3-BOOT-AMP. Reorder by index [2,3,1], join with underscores, then wrap with DOOM{...}.",
+    "mediumplus2": "Start from RUNTIME. Step 1 reverse text. Step 2 replace E->3, I->1, T->7. Step 3 append ! and submit in DOOM{...}.",
     "hard": "Start from ambatukammm. Capitalize positions #1, #3, #6 (1-based). Submit with exact inner quotes.",
     "xhard": "Reconstruct the hidden phrase from clue fragments. Submit the final flag in DOOM{...} format.",
     "crazy": "Reaction challenge target: submit the calibration flag for 6.7s mastery.",
@@ -203,6 +207,8 @@ GAME_LEVEL_PROMPTS: dict[str, str] = {
 GAME_ANSWER_KEY: dict[str, str] = {
     "easy": "DOOM{BOOTCAMP}",
     "medium": 'DOOM{"3ARLYB1RD"}',
+    "mediumplus1": "DOOM{BOOT_AMP_C3}",
+    "mediumplus2": "DOOM{3M17NUR!}",
     "hard": 'DOOM{"AmBatUkammm"}',
     "xhard": "DOOM{WE_7HE_B3ST}",
     "crazy": "DOOM{6.7_MASTER}",
