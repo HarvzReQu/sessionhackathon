@@ -177,6 +177,42 @@
       white-space: pre-wrap;
       min-height: 95px;
     }
+    .special-area {
+      border: 1px dashed #43617d;
+      background: #0a1420;
+      padding: 10px;
+      display: none;
+      gap: 8px;
+    }
+    .special-area.active { display: grid; }
+    .xhard-board {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+    .xhard-block {
+      border: 1px solid #4a6077;
+      background: #1b2636;
+      color: #fff;
+      padding: 10px;
+      font: inherit;
+      cursor: pointer;
+      min-height: 44px;
+    }
+    .xhard-block.hit { background: #1f6a3a; border-color: #2acb68; }
+    .xhard-block.decoy { background: #4a1e1e; border-color: #d84545; }
+    .crazy-timer {
+      font-size: 2rem;
+      color: #8ae234;
+      font-weight: 700;
+      text-align: center;
+    }
+    .gate-box {
+      border: 1px solid #d70a53;
+      background: #190710;
+      color: #ffd1e2;
+      padding: 10px;
+    }
     .answer-row {
       display: grid;
       grid-template-columns: 1fr auto;
@@ -260,6 +296,7 @@
         <div class="label" id="challengeTitle">Challenge Workspace</div>
         <div id="challengeMeta" class="status">Select any difficulty card to load a challenge.</div>
         <pre id="challengePrompt">Waiting for level selection...</pre>
+        <div id="specialArea" class="special-area"></div>
         <div class="answer-row">
           <input id="answerInput" type="text" maxlength="200" placeholder="Type your flag answer here, e.g. DOOM{...}" />
           <button class="btn alt" id="submitAnswerBtn">Submit Answer</button>
@@ -278,6 +315,7 @@
     const challengeTitleEl = document.getElementById("challengeTitle");
     const challengeMetaEl = document.getElementById("challengeMeta");
     const challengePromptEl = document.getElementById("challengePrompt");
+    const specialAreaEl = document.getElementById("specialArea");
     const answerInputEl = document.getElementById("answerInput");
     const submitAnswerBtn = document.getElementById("submitAnswerBtn");
     const answerStatusEl = document.getElementById("answerStatus");
@@ -292,6 +330,10 @@
     let selectedLevelId = "";
     let score = 0;
     const solved = new Set();
+    let doomGateUnlocked = false;
+    let doomAttemptsLeft = 3;
+    let xhardState = null;
+    let crazyState = { running: false, startAt: 0, timerId: null };
 
     const infoBriefs = {
       what: "Reverse engineering is analyzing a program without source code to understand hidden logic, checks, and behavior.",
@@ -342,6 +384,176 @@
       });
     }
 
+    function clearSpecialArea() {
+      specialAreaEl.classList.remove("active");
+      specialAreaEl.innerHTML = "";
+      answerInputEl.disabled = false;
+      submitAnswerBtn.disabled = false;
+    }
+
+    function renderXhardMode() {
+      const trueClues = ["WE", "_7HE", "_B3ST"];
+      const decoys = ["PWN", "404", "NULL", "FAKE", "TRASH", "L0L"];
+      const cells = [...trueClues, ...decoys].sort(() => Math.random() - 0.5);
+
+      xhardState = {
+        found: new Set(),
+        wrong: 0,
+      };
+
+      specialAreaEl.classList.add("active");
+      specialAreaEl.innerHTML = `
+        <div class="status">XHARD Block Hunt: find all real clues before submitting.</div>
+        <div id="xhardProgress" class="status">Progress: [ ? ][ ? ][ ? ] | Wrong picks: 0/4</div>
+        <div id="xhardBoard" class="xhard-board"></div>
+      `;
+
+      const boardEl = document.getElementById("xhardBoard");
+      const progressEl = document.getElementById("xhardProgress");
+
+      function refreshProgress() {
+        const ordered = trueClues.map((item) => (xhardState.found.has(item) ? item : "?"));
+        progressEl.textContent = `Progress: [ ${ordered[0]} ][ ${ordered[1]} ][ ${ordered[2]} ] | Wrong picks: ${xhardState.wrong}/4`;
+      }
+
+      function rebuildBoard() {
+        const reshuffled = [...trueClues, ...decoys].sort(() => Math.random() - 0.5);
+        boardEl.innerHTML = "";
+        reshuffled.forEach((item, idx) => {
+          const btn = document.createElement("button");
+          btn.className = "xhard-block";
+          btn.textContent = `BLOCK ${idx + 1}`;
+          btn.addEventListener("click", () => {
+            btn.disabled = true;
+            if (trueClues.includes(item)) {
+              xhardState.found.add(item);
+              btn.classList.add("hit");
+              btn.textContent = `CLUE: ${item}`;
+              setAnswerStatus(`Real clue found: ${item}`);
+            } else {
+              xhardState.wrong += 1;
+              btn.classList.add("decoy");
+              btn.textContent = `DECOY: ${item}`;
+              setAnswerStatus(`Decoy found: ${item}`, true);
+              if (xhardState.wrong >= 4) {
+                xhardState.found.clear();
+                xhardState.wrong = 0;
+                setAnswerStatus("4 wrong blocks pressed. Board reshuffled.", true);
+                refreshProgress();
+                rebuildBoard();
+                return;
+              }
+            }
+            refreshProgress();
+          });
+          boardEl.appendChild(btn);
+        });
+      }
+
+      rebuildBoard();
+      refreshProgress();
+    }
+
+    function renderCrazyMode() {
+      if (crazyState.timerId) {
+        clearInterval(crazyState.timerId);
+      }
+      crazyState = { running: false, startAt: 0, timerId: null };
+
+      specialAreaEl.classList.add("active");
+      specialAreaEl.innerHTML = `
+        <div class="status">CRAZY Reaction Core: hit 6.7 seconds (tolerance +/-0.12).</div>
+        <div id="crazyTimer" class="crazy-timer">0.00 s</div>
+        <div class="controls">
+          <button class="btn alt" id="crazyStartBtn">START</button>
+          <button class="btn alt" id="crazyStopBtn" disabled>STOP</button>
+        </div>
+      `;
+
+      const timerEl = document.getElementById("crazyTimer");
+      const startBtn = document.getElementById("crazyStartBtn");
+      const stopBtn = document.getElementById("crazyStopBtn");
+      const target = 6.7;
+      const tolerance = 0.12;
+
+      startBtn.addEventListener("click", () => {
+        crazyState.running = true;
+        crazyState.startAt = performance.now();
+        startBtn.disabled = true;
+        stopBtn.disabled = false;
+        setAnswerStatus("Timer running... click STOP at 6.7s");
+        crazyState.timerId = setInterval(() => {
+          if (!crazyState.running) {
+            return;
+          }
+          const elapsed = (performance.now() - crazyState.startAt) / 1000;
+          timerEl.textContent = `${elapsed.toFixed(2)} s`;
+        }, 20);
+      });
+
+      stopBtn.addEventListener("click", () => {
+        if (!crazyState.running) {
+          return;
+        }
+        crazyState.running = false;
+        clearInterval(crazyState.timerId);
+        crazyState.timerId = null;
+        const elapsed = (performance.now() - crazyState.startAt) / 1000;
+        timerEl.textContent = `${elapsed.toFixed(2)} s`;
+        const diff = Math.abs(elapsed - target);
+        if (diff <= tolerance) {
+          answerInputEl.value = "DOOM{6.7_MASTER}";
+          setAnswerStatus(`Perfect zone hit! diff=${diff.toFixed(3)}s -> flag autofilled.`);
+        } else {
+          setAnswerStatus(`Missed by ${diff.toFixed(3)}s. Retry and hit 6.7!`, true);
+        }
+        startBtn.disabled = false;
+        stopBtn.disabled = true;
+      });
+    }
+
+    function renderDoomdadaGate() {
+      if (doomGateUnlocked) {
+        clearSpecialArea();
+        return;
+      }
+
+      answerInputEl.disabled = true;
+      submitAnswerBtn.disabled = true;
+      specialAreaEl.classList.add("active");
+      specialAreaEl.innerHTML = `
+        <div class="gate-box">[ DOOMDADA TERMINAL LOCKDOWN ]</div>
+        <div class="status">Hint: favorite fruit - green outside, red inside, black seeds.</div>
+        <div class="answer-row">
+          <input id="gateInput" type="password" placeholder="Enter gate password" />
+          <button class="btn" id="gateUnlockBtn">UNLOCK</button>
+        </div>
+      `;
+
+      const gateInput = document.getElementById("gateInput");
+      const gateBtn = document.getElementById("gateUnlockBtn");
+
+      function unlockGate() {
+        const guess = gateInput.value.trim().toUpperCase();
+        if (guess === "WATERMELON") {
+          doomGateUnlocked = true;
+          clearSpecialArea();
+          answerInputEl.disabled = false;
+          submitAnswerBtn.disabled = false;
+          setAnswerStatus("Access granted. DOOMDADA challenge unlocked.");
+          return;
+        }
+        setAnswerStatus("ACCESS DENIED. Wrong gate password.", true);
+      }
+
+      gateBtn.addEventListener("click", unlockGate);
+      gateInput.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          unlockGate();
+        }
+      });
+    }
+
     async function openLevel(levelId) {
       try {
         const res = await fetch(apiUrl(`/api/game/levels/${encodeURIComponent(levelId)}`));
@@ -358,6 +570,16 @@
         answerInputEl.value = "";
         setAnswerStatus(`Loaded ${data.title}. Submit your flag.`, false);
         logRunner(`task.inject('${data.id}_challenge')`);
+
+        clearSpecialArea();
+        if (data.id === "xhard") {
+          renderXhardMode();
+        } else if (data.id === "crazy") {
+          renderCrazyMode();
+        } else if (data.id === "doomdada") {
+          renderDoomdadaGate();
+        }
+
         renderLevels();
       } catch {
         setAnswerStatus("Network error while loading challenge.", true);
@@ -374,6 +596,15 @@
       if (!answer) {
         setAnswerStatus("Answer is required.", true);
         return;
+      }
+
+      if (selectedLevelId === "xhard") {
+        const required = ["WE", "_7HE", "_B3ST"];
+        const ready = xhardState && required.every((c) => xhardState.found.has(c));
+        if (!ready) {
+          setAnswerStatus("Find all 3 real clues first before submitting.", true);
+          return;
+        }
       }
 
       submitAnswerBtn.disabled = true;
@@ -397,11 +628,34 @@
             solved.add(selectedLevelId);
             score += data.points || 0;
           }
+          if (selectedLevelId === "doomdada") {
+            doomAttemptsLeft = 3;
+          }
           setAnswerStatus(`${data.message} | Score: ${score}`, false);
           challengeMetaEl.textContent = `${levels.find((x) => x.id === selectedLevelId)?.description || ""} | Score: ${score}`;
           logRunner(`score.update(level='${selectedLevelId}', total=${score})`);
           renderLevels();
         } else {
+          if (selectedLevelId === "doomdada") {
+            doomAttemptsLeft -= 1;
+            if (doomAttemptsLeft === 2) {
+              setAnswerStatus("[WARNING BLOCK 1] Threat level ELEVATED. Attempts remaining: 2", true);
+            } else if (doomAttemptsLeft === 1) {
+              setAnswerStatus("[WARNING BLOCK 2] Threat level CRITICAL. Final attempt remaining.", true);
+            } else if (doomAttemptsLeft <= 0) {
+              score = 0;
+              solved.clear();
+              doomAttemptsLeft = 3;
+              doomGateUnlocked = false;
+              setAnswerStatus("[SYSTEM LOCKDOWN] Progress reset. Restart from Easy to Hard.", true);
+              renderLevels();
+              if (levels.length) {
+                openLevel("easy");
+              }
+              logRunner("lockdown.triggered() -> progress reset");
+              return;
+            }
+          }
           setAnswerStatus(data.message || "Incorrect answer.", true);
           logRunner(`solver.reject(level='${selectedLevelId}')`);
         }
@@ -432,6 +686,12 @@
     function resetProgress() {
       score = 0;
       solved.clear();
+      doomAttemptsLeft = 3;
+      doomGateUnlocked = false;
+      if (crazyState.timerId) {
+        clearInterval(crazyState.timerId);
+        crazyState.timerId = null;
+      }
       renderLevels();
       if (selectedLevelId) {
         challengeMetaEl.textContent = `${levels.find((x) => x.id === selectedLevelId)?.description || ""} | Score: ${score}`;
