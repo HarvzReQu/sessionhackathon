@@ -112,6 +112,19 @@
       font: inherit;
       font-weight: 700;
       cursor: pointer;
+      transition: transform 120ms ease, filter 160ms ease, border-color 160ms ease;
+    }
+    .btn:hover:not(:disabled) {
+      transform: translateY(-1px);
+      filter: brightness(1.08);
+      border-color: #4f75a0;
+    }
+    .btn:active:not(:disabled) {
+      transform: translateY(0);
+    }
+    .btn:disabled {
+      opacity: 0.62;
+      cursor: not-allowed;
     }
     .btn.alt {
       background: #152739;
@@ -147,6 +160,11 @@
       padding: 10px;
       position: relative;
       overflow: hidden;
+      transition: transform 180ms ease, box-shadow 220ms ease;
+    }
+    .card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.28);
     }
     .card.level-easy {
       background: linear-gradient(150deg, #23362a, #1f2f3f);
@@ -525,6 +543,7 @@
       place-items: center;
       padding: 16px;
       z-index: 999;
+      animation: modalFadeIn 180ms ease;
     }
     .modal.hidden { display: none; }
     .modal-card {
@@ -616,6 +635,10 @@
       padding: 8px 10px;
       background: #111d2d;
       border-bottom: 1px solid #2f4658;
+      transition: background 140ms ease;
+    }
+    .panel-section summary:hover {
+      background: #16253a;
     }
     .panel-section summary::-webkit-details-marker {
       display: none;
@@ -637,6 +660,14 @@
       font-size: 0.9rem;
     }
     .onboard-tip.hidden { display: none; }
+    :focus-visible {
+      outline: 2px solid #9fef00;
+      outline-offset: 2px;
+    }
+    @keyframes modalFadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
     @keyframes crazyPulse {
       0% { box-shadow: inset 0 0 0 rgba(111, 66, 193, 0.1); }
       50% { box-shadow: inset 0 0 24px rgba(111, 66, 193, 0.28); }
@@ -664,6 +695,14 @@
       .helper-grid { grid-template-columns: 1fr; }
       .helper-buttons { grid-template-columns: 1fr; }
       .debug-layout { grid-template-columns: 1fr; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
     }
   </style>
 </head>
@@ -1245,6 +1284,9 @@ Console: waiting for input</div>
 
     function openPlayModal() {
       playModalEl.classList.remove("hidden");
+      setTimeout(() => {
+        answerInputEl.focus();
+      }, 0);
       if (localStorage.getItem("doomdada_onboard_seen_v1") !== "1") {
         onboardTipEl.classList.remove("hidden");
       }
