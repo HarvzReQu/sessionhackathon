@@ -12,7 +12,7 @@ from typing import Literal
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -237,8 +237,8 @@ def serve_join_page() -> FileResponse:
 
 
 @app.get("/admin")
-def serve_admin_page() -> FileResponse:
-    return FileResponse(str(STATIC_DIR / "admin.html"))
+def serve_admin_page() -> RedirectResponse:
+    return RedirectResponse(url="/", status_code=307)
 
 
 @app.post("/api/admin/create", response_model=CreateLobbyResponse)

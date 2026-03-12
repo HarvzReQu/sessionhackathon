@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>DOOMDADA Lobby Join</title>
+  <title>DOOMDADA Game Portal</title>
   <style>
     :root {
       --bg: #070a0f;
@@ -173,34 +173,25 @@
 <body>
   <section class="panel">
     <div class="header">
-      <h1>DOOMDADA Bootcamp Lobby</h1>
-      <p>Join with room code like Kahoot. Players and spectators can enter separately.</p>
+      <h1>DOOMDADA Game Portal</h1>
+      <p>Sign in, then start the reverse engineering challenges immediately.</p>
     </div>
     <div class="body">
-      <label>
-        Room Code
-        <input id="roomCode" maxlength="8" placeholder="e.g. A1B2C3" />
-      </label>
-      <label>
-        Display Name
-        <input id="displayName" maxlength="40" placeholder="Your name" />
-      </label>
-      <label>
-        Join As
-        <select id="role">
-          <option value="player">Player</option>
-          <option value="spectator">Spectator</option>
-        </select>
-      </label>
-      <button id="joinBtn">Join Lobby</button>
-      <div id="status" class="status">Enter room code and your name to join.</div>
-      <div id="lobbyState" class="status">Lobby state: waiting</div>
-      <div class="stats">
-        <div class="tile">Visitors<strong id="visitors">0</strong></div>
-        <div class="tile">Players<strong id="players">0</strong></div>
-        <div class="tile">Spectators<strong id="spectators">0</strong></div>
+      <div id="loginPanel" class="game-panel">
+        <strong>Login</strong>
+        <label>
+          Username
+          <input id="usernameInput" maxlength="20" placeholder="Doom" />
+        </label>
+        <label>
+          Password
+          <input id="passwordInput" maxlength="20" type="password" placeholder="Dada" />
+        </label>
+        <button id="loginBtn">Enter Game</button>
       </div>
-      <div id="waitingPanel" class="game-panel">Waiting for admin to start the game...</div>
+
+      <div id="status" class="status">Use username Doom and password Dada.</div>
+
       <div id="gamePanel" class="game-panel hidden">
         <strong>Main Game Screen</strong>
         <div class="levels" id="levelsGrid"></div>
@@ -223,16 +214,11 @@
   </section>
 
   <script>
-    const roomCodeInput = document.getElementById("roomCode");
-    const displayNameInput = document.getElementById("displayName");
-    const roleInput = document.getElementById("role");
-    const joinBtn = document.getElementById("joinBtn");
+    const loginPanelEl = document.getElementById("loginPanel");
+    const usernameInputEl = document.getElementById("usernameInput");
+    const passwordInputEl = document.getElementById("passwordInput");
+    const loginBtn = document.getElementById("loginBtn");
     const statusEl = document.getElementById("status");
-    const visitorsEl = document.getElementById("visitors");
-    const playersEl = document.getElementById("players");
-    const spectatorsEl = document.getElementById("spectators");
-    const lobbyStateEl = document.getElementById("lobbyState");
-    const waitingPanelEl = document.getElementById("waitingPanel");
     const gamePanelEl = document.getElementById("gamePanel");
     const levelsGridEl = document.getElementById("levelsGrid");
     const challengePanelEl = document.getElementById("challengePanel");
@@ -244,9 +230,7 @@
     const closeChallengeBtn = document.getElementById("closeChallengeBtn");
     const answerResultEl = document.getElementById("answerResult");
     const API_BASE = window.location.protocol === "file:" ? "http://127.0.0.1:8000" : "";
-    const IS_LOCAL_HOST = ["localhost", "127.0.0.1"].includes(window.location.hostname) || window.location.protocol === "file:";
 
-    let joinedRoom = "";
     let levelsLoaded = false;
     let selectedLevelId = "";
     let levelsById = {};
@@ -262,19 +246,10 @@
       statusEl.classList.toggle("error", isError);
     }
 
-    function paintStats(stats) {
-      visitorsEl.textContent = stats.total_visitors;
-      playersEl.textContent = stats.players;
-      spectatorsEl.textContent = stats.spectators;
-      lobbyStateEl.textContent = `Lobby state: ${stats.lobby_status}`;
-      updateLobbyView(stats.lobby_status);
-    }
-
-    function updateLobbyView(lobbyStatus) {
-      const isLive = lobbyStatus === "live";
-      waitingPanelEl.classList.toggle("hidden", isLive);
-      gamePanelEl.classList.toggle("hidden", !isLive);
-      if (isLive && !levelsLoaded) {
+    function showGameScreen() {
+      loginPanelEl.classList.add("hidden");
+      gamePanelEl.classList.remove("hidden");
+      if (!levelsLoaded) {
         loadGameLevels();
       }
     }
@@ -307,18 +282,6 @@
     }
 
     async function openChallenge(levelId) {
-      if (IS_LOCAL_HOST) {
-        try {
-          const launchRes = await fetch(apiUrl("/api/game/launch-desktop"), {
-            method: "POST"
-          });
-          if (launchRes.ok) {
-            setStatus("Desktop game launched on this machine. Use the opened app window for full GUI gameplay.");
-          }
-        } catch {
-        }
-      }
-
       try {
         const res = await fetch(apiUrl(`/api/game/levels/${encodeURIComponent(levelId)}`));
         const data = await res.json();
@@ -372,56 +335,23 @@
       return "";
     }
 
-    async function refreshPublicStats() {
-      if (!joinedRoom) return;
-      try {
-        const res = await fetch(apiUrl(`/api/lobby/${joinedRoom}/public`));
-        if (!res.ok) return;
-        const data = await res.json();
-        paintStats(data);
-      } catch {
-      }
-    }
+    function attemptLogin() {
+      const username = usernameInputEl.value.trim();
+      const password = passwordInputEl.value.trim();
 
-    joinBtn.addEventListener("click", async () => {
-      const room_code = roomCodeInput.value.trim().toUpperCase();
-      const name = displayNameInput.value.trim();
-      const role = roleInput.value;
-
-      if (!room_code || !name) {
-        setStatus("Room code and display name are required.", true);
+      if (username === "Doom" && password === "Dada") {
+        setStatus("Login successful. Welcome to DOOMDADA.");
+        showGameScreen();
         return;
       }
 
-      joinBtn.disabled = true;
-      setStatus("Joining lobby...");
+      setStatus("Invalid credentials. Use Doom / Dada.", true);
+    }
 
-      try {
-        const res = await fetch(apiUrl("/api/lobby/join"), {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ room_code, name, role })
-        });
-
-        const data = await res.json();
-        if (!res.ok) {
-          setStatus(data.detail || "Could not join lobby.", true);
-          if (res.status === 423) {
-            lobbyStateEl.textContent = "Lobby state: live (join locked)";
-          }
-          return;
-        }
-
-        joinedRoom = room_code;
-        paintStats(data.stats);
-        setStatus(`Joined ${room_code} as ${role}. Waiting for admin to start...`);
-        if (data.stats && data.stats.lobby_status === "live") {
-          setStatus(`Joined ${room_code} as ${role}. Game already started.`, false);
-        }
-      } catch {
-        setStatus("Network error while joining.", true);
-      } finally {
-        joinBtn.disabled = false;
+    loginBtn.addEventListener("click", attemptLogin);
+    passwordInputEl.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        attemptLogin();
       }
     });
 
@@ -481,8 +411,6 @@
       challengePanelEl.classList.add("hidden");
       selectedLevelId = "";
     });
-
-    setInterval(refreshPublicStats, 3000);
   </script>
 </body>
 </html>
