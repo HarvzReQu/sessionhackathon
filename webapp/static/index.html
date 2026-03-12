@@ -174,6 +174,13 @@
       border-color: #6f2339;
       box-shadow: inset 0 0 24px rgba(180, 24, 66, 0.2);
     }
+    .card.blocked {
+      border-color: #7a2b3a;
+      box-shadow: inset 0 0 18px rgba(185, 34, 72, 0.3);
+    }
+    .card.blocked .points {
+      color: #f87171;
+    }
     .card.level-doomdada::before {
       content: "";
       position: absolute;
@@ -502,6 +509,20 @@
       box-shadow: 0 20px 34px rgba(0, 0, 0, 0.72), inset 0 0 24px rgba(185, 34, 72, 0.2);
       animation: doomGlitch 1.2s steps(1, end) infinite;
     }
+    .modal-card.theme-doomdada.glitch-1 {
+      animation-duration: 0.9s;
+      filter: saturate(1.05) contrast(1.03);
+    }
+    .modal-card.theme-doomdada.glitch-2 {
+      animation-duration: 0.6s;
+      filter: saturate(1.12) contrast(1.08);
+      box-shadow: 0 20px 34px rgba(0, 0, 0, 0.72), inset 0 0 36px rgba(185, 34, 72, 0.32);
+    }
+    .modal-card.theme-doomdada.glitch-3 {
+      animation-duration: 0.36s;
+      filter: saturate(1.2) contrast(1.12) hue-rotate(-6deg);
+      box-shadow: 0 20px 34px rgba(0, 0, 0, 0.72), inset 0 0 56px rgba(220, 38, 84, 0.45);
+    }
     .modal-card.theme-doomdada .modal-head {
       border-color: #5b2a3b;
       background: #1a1219;
@@ -772,6 +793,8 @@ Console: waiting for input</div>
     const solved = new Set();
     let doomGateUnlocked = false;
     let doomAttemptsLeft = 3;
+    let doomCooldownUntil = 0;
+    let doomCooldownLastTick = false;
     let xhardState = null;
     let crazyState = { running: false, startAt: 0, timerId: null };
     const levelStartTimes = new Map();
@@ -1011,6 +1034,21 @@ print(build_flag())`;
       return `${mins}min and ${secs}secs`;
     }
 
+    function getDoomCooldownRemainingMs() {
+      return Math.max(0, doomCooldownUntil - Date.now());
+    }
+
+    function isDoomBlocked() {
+      return getDoomCooldownRemainingMs() > 0;
+    }
+
+    function formatCooldownClock(ms) {
+      const total = Math.max(0, Math.ceil(ms / 1000));
+      const mins = Math.floor(total / 60);
+      const secs = total % 60;
+      return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+    }
+
     function renderSolvedBoard() {
       const entries = Array.from(solvedSummaries.entries());
       solvedListEl.innerHTML = entries.map(([levelId, data]) => {
@@ -1090,12 +1128,12 @@ print(build_flag())`;
       }
 
       levelsGridEl.innerHTML = levels.map((lvl) => `
-        <article class="card level-${lvl.id} ${selectedLevelId === lvl.id ? "active" : ""} ${solved.has(lvl.id) ? "done" : ""}">
+        <article class="card level-${lvl.id} ${selectedLevelId === lvl.id ? "active" : ""} ${solved.has(lvl.id) ? "done" : ""} ${lvl.id === "doomdada" && isDoomBlocked() ? "blocked" : ""}">
           <h3>${lvl.title}</h3>
-          <p>${lvl.description}</p>
+          <p>${lvl.id === "doomdada" && isDoomBlocked() ? `[ BLOCK ] Locked for ${formatCooldownClock(getDoomCooldownRemainingMs())}` : lvl.description}</p>
           <div class="points">${lvl.points} points</div>
           <div style="margin-top:10px;">
-            <button class="btn alt" data-level-id="${lvl.id}">${solved.has(lvl.id) ? "Replay" : "Play"} ${lvl.title}</button>
+            <button class="btn alt" data-level-id="${lvl.id}" ${lvl.id === "doomdada" && isDoomBlocked() ? "disabled" : ""}>${lvl.id === "doomdada" && isDoomBlocked() ? `[ BLOCK ] ${formatCooldownClock(getDoomCooldownRemainingMs())}` : `${solved.has(lvl.id) ? "Replay" : "Play"} ${lvl.title}`}</button>
           </div>
         </article>
       `).join("");
@@ -1123,10 +1161,19 @@ print(build_flag())`;
 
     function applyModalTheme(levelId) {
       const themeClasses = ["theme-easy", "theme-medium", "theme-hard", "theme-xhard", "theme-crazy", "theme-doomdada"];
+      const glitchClasses = ["glitch-1", "glitch-2", "glitch-3"];
       playModalCardEl.classList.remove(...themeClasses);
+      playModalCardEl.classList.remove(...glitchClasses);
       const levelTheme = `theme-${levelId}`;
       if (themeClasses.includes(levelTheme)) {
         playModalCardEl.classList.add(levelTheme);
+      }
+
+      if (levelId === "doomdada") {
+        const usedAttempts = Math.max(0, 3 - doomAttemptsLeft);
+        if (usedAttempts > 0) {
+          playModalCardEl.classList.add(`glitch-${Math.min(3, usedAttempts)}`);
+        }
       }
     }
 
@@ -1515,6 +1562,12 @@ print(build_flag())`;
 
     async function openLevel(levelId, openModal = false) {
       try {
+        if (levelId === "doomdada" && isDoomBlocked()) {
+          setAnswerStatus(`[ BLOCK ] DOOMDADA locked. Retry in ${formatCooldownClock(getDoomCooldownRemainingMs())}.`, true);
+          renderLevels();
+          return;
+        }
+
         const res = await fetch(apiUrl(`/api/game/levels/${encodeURIComponent(levelId)}`));
         const data = await res.json();
         if (!res.ok) {
@@ -1615,6 +1668,8 @@ print(build_flag())`;
           }
           if (selectedLevelId === "doomdada") {
             doomAttemptsLeft = 3;
+            doomGateUnlocked = false;
+            playModalCardEl.classList.remove("glitch-1", "glitch-2", "glitch-3");
           }
           const solvedTitle = levels.find((x) => x.id === selectedLevelId)?.title || selectedLevelId.toUpperCase();
           setAnswerStatus(`${data.message} | Problem Solved: ${solvedTitle}, Time: ${formatElapsed(elapsedSeconds)} | Score: ${score}`, false);
@@ -1626,21 +1681,20 @@ print(build_flag())`;
         } else {
           if (selectedLevelId === "doomdada") {
             doomAttemptsLeft -= 1;
+            applyModalTheme("doomdada");
             if (doomAttemptsLeft === 2) {
               setAnswerStatus("[WARNING BLOCK 1] Threat level ELEVATED. Attempts remaining: 2", true);
             } else if (doomAttemptsLeft === 1) {
               setAnswerStatus("[WARNING BLOCK 2] Threat level CRITICAL. Final attempt remaining.", true);
             } else if (doomAttemptsLeft <= 0) {
-              score = 0;
-              solved.clear();
+              doomCooldownUntil = Date.now() + 60_000;
               doomAttemptsLeft = 3;
               doomGateUnlocked = false;
-              setAnswerStatus("[SYSTEM LOCKDOWN] Progress reset. Restart from Easy to Hard.", true);
+              setAnswerStatus("[ BLOCK ] DOOMDADA locked for 01:00 due to repeated wrong attempts.", true);
               renderLevels();
-              if (levels.length) {
-                openLevel("easy");
-              }
-              logRunner("lockdown.triggered() -> progress reset");
+              closePlayModal();
+              selectedLevelId = "";
+              logRunner("doomdada.locked(cooldown=60s)");
               return;
             }
           }
@@ -1706,6 +1760,15 @@ print(build_flag())`;
     setInterval(() => {
       logRunner(runnerLines[runnerIdx % runnerLines.length]);
       runnerIdx += 1;
+
+      if (isDoomBlocked()) {
+        doomCooldownLastTick = true;
+        renderLevels();
+      } else if (doomCooldownLastTick) {
+        doomCooldownLastTick = false;
+        renderLevels();
+        setAnswerStatus("DOOMDADA cooldown ended. Level reopened.");
+      }
     }, 1700);
 
     btnWhat.addEventListener("click", () => { missionBriefEl.textContent = infoBriefs.what; });
