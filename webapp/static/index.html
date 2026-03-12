@@ -177,22 +177,9 @@
       <p>Sign in, then start the reverse engineering challenges immediately.</p>
     </div>
     <div class="body">
-      <div id="loginPanel" class="game-panel">
-        <strong>Login</strong>
-        <label>
-          Username
-          <input id="usernameInput" maxlength="20" placeholder="Doom" />
-        </label>
-        <label>
-          Password
-          <input id="passwordInput" maxlength="20" type="password" placeholder="Dada" />
-        </label>
-        <button id="loginBtn">Enter Game</button>
-      </div>
+      <div id="status" class="status">Game loaded. Pick a challenge to begin.</div>
 
-      <div id="status" class="status">Use username Doom and password Dada.</div>
-
-      <div id="gamePanel" class="game-panel hidden">
+      <div id="gamePanel" class="game-panel">
         <strong>Main Game Screen</strong>
         <div class="levels" id="levelsGrid"></div>
         <div id="challengePanel" class="challenge-panel hidden">
@@ -214,10 +201,6 @@
   </section>
 
   <script>
-    const loginPanelEl = document.getElementById("loginPanel");
-    const usernameInputEl = document.getElementById("usernameInput");
-    const passwordInputEl = document.getElementById("passwordInput");
-    const loginBtn = document.getElementById("loginBtn");
     const statusEl = document.getElementById("status");
     const gamePanelEl = document.getElementById("gamePanel");
     const levelsGridEl = document.getElementById("levelsGrid");
@@ -230,8 +213,6 @@
     const closeChallengeBtn = document.getElementById("closeChallengeBtn");
     const answerResultEl = document.getElementById("answerResult");
     const API_BASE = window.location.protocol === "file:" ? "http://127.0.0.1:8000" : "";
-    const IS_LOCAL_HOST = ["localhost", "127.0.0.1"].includes(window.location.hostname) || window.location.protocol === "file:";
-
     let levelsLoaded = false;
     let selectedLevelId = "";
     let levelsById = {};
@@ -245,29 +226,6 @@
     function setStatus(text, isError = false) {
       statusEl.textContent = text;
       statusEl.classList.toggle("error", isError);
-    }
-
-    function showGameScreen() {
-      loginPanelEl.classList.add("hidden");
-      gamePanelEl.classList.remove("hidden");
-      if (!levelsLoaded) {
-        loadGameLevels();
-      }
-    }
-
-    async function tryLaunchDesktopGame() {
-      if (!IS_LOCAL_HOST) {
-        return false;
-      }
-
-      try {
-        const res = await fetch(apiUrl("/api/game/launch-desktop"), {
-          method: "POST"
-        });
-        return res.ok;
-      } catch {
-        return false;
-      }
     }
 
     function renderLevels(levels) {
@@ -351,36 +309,6 @@
       return "";
     }
 
-    async function attemptLogin() {
-      const username = usernameInputEl.value.trim();
-      const password = passwordInputEl.value.trim();
-
-      if (username === "Doom" && password === "Dada") {
-        loginBtn.disabled = true;
-        setStatus("Login successful. Preparing game...");
-        const launched = await tryLaunchDesktopGame();
-
-        if (launched) {
-          setStatus("Desktop game launched. Use the opened game window.");
-        } else {
-          setStatus("Welcome to DOOMDADA. Opening web game screen.");
-        }
-
-        showGameScreen();
-        loginBtn.disabled = false;
-        return;
-      }
-
-      setStatus("Invalid credentials. Use Doom / Dada.", true);
-    }
-
-    loginBtn.addEventListener("click", attemptLogin);
-    passwordInputEl.addEventListener("keydown", (event) => {
-      if (event.key === "Enter") {
-        attemptLogin();
-      }
-    });
-
     submitAnswerBtn.addEventListener("click", async () => {
       if (!selectedLevelId) {
         answerResultEl.textContent = "Open a challenge first.";
@@ -437,6 +365,8 @@
       challengePanelEl.classList.add("hidden");
       selectedLevelId = "";
     });
+
+    loadGameLevels();
   </script>
 </body>
 </html>
