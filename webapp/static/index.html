@@ -631,17 +631,17 @@
       <div class="ctf-note">CTF Flow: Read prompt -> inspect script -> use hints only when needed -> submit flag in exact format.</div>
 
       <div class="toggles">
-        <label><input type="checkbox" checked />Boost Mode</label>
-        <label><input type="checkbox" />Runner Hint Mode</label>
-        <label><input type="checkbox" />Mute SFX</label>
-        <label><input type="checkbox" />Timed Mode (60s)</label>
-        <label><input type="checkbox" checked />Classroom Mode</label>
+        <label><input type="checkbox" checked disabled />Boost Mode (coming soon)</label>
+        <label><input type="checkbox" disabled />Runner Hint Mode (coming soon)</label>
+        <label><input type="checkbox" disabled />Mute SFX (coming soon)</label>
+        <label><input type="checkbox" disabled />Timed Mode (coming soon)</label>
+        <label><input type="checkbox" checked disabled />Classroom Mode (coming soon)</label>
       </div>
 
       <div class="controls">
-        <button class="btn">Leaderboard</button>
-        <button class="btn">Team Scores</button>
-        <button class="btn">Submit Score</button>
+        <button class="btn" disabled title="Coming soon">Leaderboard (coming soon)</button>
+        <button class="btn" disabled title="Coming soon">Team Scores (coming soon)</button>
+        <button class="btn" disabled title="Coming soon">Submit Score (coming soon)</button>
         <button class="btn" id="btnResetProgress">Reset Score</button>
       </div>
 
@@ -791,7 +791,6 @@ Console: waiting for input</div>
     let selectedLevelId = "";
     let score = 0;
     const solved = new Set();
-    let doomGateUnlocked = false;
     let doomAttemptsLeft = 3;
     let doomCooldownUntil = 0;
     let doomCooldownLastTick = false;
@@ -800,14 +799,15 @@ Console: waiting for input</div>
     const levelStartTimes = new Map();
     const solvedSummaries = new Map();
     const solvedTimeline = [];
-    let doomdadaDebugState = null;
-    const doomdadaHints = [
-      "Hint 1: story_seed() returns the base text.",
-      "Hint 2: apply_leet() changes o,g,a,t,s into 0,6,@,+,$.",
-      "Hint 3: apply_case_pattern() uppercases indexes 0, 7, 8, 10, 12.",
-      "Hint 4: Final inside text starts with C0n6r and ends with oN$! before wrapping.",
-      "Hint 5: Wrap the exact transformed text as DOOM{...}.",
-    ];
+    const clientId = (() => {
+      const key = "doomdada_client_id_v1";
+      let existing = localStorage.getItem(key);
+      if (!existing) {
+        existing = `client_${Math.random().toString(36).slice(2, 12)}`;
+        localStorage.setItem(key, existing);
+      }
+      return existing;
+    })();
 
     const doomdadaScriptCode = `# DOOMDADA Final Boss Script (BROKEN ON PURPOSE)
   # Storyline: Bridge Boy left a damaged script, not direct clues.
@@ -838,39 +838,6 @@ Console: waiting for input</div>
     return f"DOOM{{{stage2}}}"
 
   print(build_flag())`;
-
-      const doomdadaDebugLines = [
-        "def story_seed() -> str:",
-        "    return \"<missing_phrase>\"",
-        "",
-        "def apply_leet(text: str) -> str:",
-        "    table = {\"o\": \"0\", \"g\": \"6\", \"a\": \"@\", \"t\": \"?\", \"s\": \"$\"}",
-        "    return \"\".join(table.get(ch, ch) for ch in text.lower())",
-        "",
-        "def apply_case_pattern(text: str) -> str:",
-        "    upper_idx = {0, ?, ?, ?, ?}",
-        "    out = []",
-        "    for i, ch in enumerate(text):",
-        "        out.append(ch.upper() if i in upper_idx else ch.lower())",
-        "    return \"\".join(out)",
-        "",
-        "def build_flag() -> str:",
-        "    phrase = story_seed()",
-        "    stage1 = apply_leet(phrase)",
-        "    stage2 = apply_case_pattern(stage1)",
-        "    return f\"DOOM{{{stage2}}}\"",
-        "",
-        "print(build_flag())",
-      ];
-
-      const doomdadaDebugSteps = [
-        { line: 16, log: "[step] phrase = story_seed()", vars: { phrase: "<hidden - infer from hints>" }, stack: ["main", "build_flag", "story_seed"] },
-        { line: 17, log: "[step] stage1 = apply_leet(phrase)", vars: { phrase: "<hidden>", stage1: "<hidden intermediate>" }, stack: ["main", "build_flag", "apply_leet"] },
-        { line: 18, log: "[step] stage2 = apply_case_pattern(stage1)", vars: { stage1: "<hidden intermediate>", stage2: "<hidden final-inside>" }, stack: ["main", "build_flag", "apply_case_pattern"] },
-        { line: 19, log: "[step] return DOOM{<hidden>} ", vars: { flag: "DOOM{<derive_manually>}" }, stack: ["main", "build_flag"] },
-        { line: 21, log: "[stdout] <output hidden - submit what you derived>", vars: { flag: "<hidden>" }, stack: ["main"], done: true },
-      ];
-      const doomdadaBreakpointLines = new Set(doomdadaDebugSteps.map((step) => step.line));
 
     const infoBriefs = {
       what: "Reverse engineering is analyzing a program without source code to understand hidden logic, checks, and behavior.",
@@ -1053,6 +1020,21 @@ Console: waiting for input</div>
       return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
     }
 
+    async function syncDoomdadaStatus() {
+      try {
+        const res = await fetch(apiUrl(`/api/game/doomdada/status?client_id=${encodeURIComponent(clientId)}`));
+        if (!res.ok) {
+          return;
+        }
+        const data = await res.json();
+        doomAttemptsLeft = typeof data.attempts_left === "number" ? data.attempts_left : 3;
+        const cooldownSeconds = typeof data.cooldown_remaining_seconds === "number" ? data.cooldown_remaining_seconds : 0;
+        doomCooldownUntil = cooldownSeconds > 0 ? Date.now() + (cooldownSeconds * 1000) : 0;
+      } catch {
+        // Keep last known local state if status sync fails.
+      }
+    }
+
     function renderSolvedBoard() {
       const entries = Array.from(solvedSummaries.entries());
       solvedListEl.innerHTML = entries.map(([levelId, data]) => {
@@ -1230,176 +1212,6 @@ Console: waiting for input</div>
       specialAreaEl.innerHTML = "";
       answerInputEl.disabled = false;
       submitAnswerBtn.disabled = false;
-      doomdadaDebugState = null;
-    }
-
-    function renderDoomdadaCodeView(activeLine = -1, breakpoints = new Set()) {
-      return doomdadaDebugLines.map((line, idx) => {
-        const lineNum = idx + 1;
-        const lineNo = String(lineNum).padStart(2, "0");
-        const active = idx + 1 === activeLine ? "active" : "";
-        const bp = breakpoints.has(lineNum) ? "breakpoint" : "";
-        const marker = breakpoints.has(lineNum) ? "●" : "○";
-        return `<div class="debug-line ${active} ${bp}" data-line="${lineNum}"><span class="bp">${marker}</span>${lineNo}  ${line}</div>`;
-      }).join("");
-    }
-
-    function formatDebugVars(varsObj) {
-      const keys = Object.keys(varsObj || {});
-      if (!keys.length) {
-        return "Locals\n- (empty)";
-      }
-      return `Locals\n${keys.map((k) => `${k} = ${varsObj[k]}`).join("\n")}`;
-    }
-
-    function formatCallStack(stack) {
-      if (!stack || !stack.length) {
-        return "Call Stack\n- main";
-      }
-      return `Call Stack\n${stack.map((frame, idx) => `${idx}. ${frame}`).join("\n")}`;
-    }
-
-    function renderDoomdadaWorkbench() {
-      answerInputEl.disabled = false;
-      submitAnswerBtn.disabled = false;
-      specialAreaEl.classList.add("active");
-
-      doomdadaDebugState = {
-        stepIdx: -1,
-        terminalLines: [
-          "DOOMDADA Debug Lab booted.",
-          "Mode: VSCode/GDB-style stepping",
-          "Tip: Click code lines to toggle breakpoints.",
-          "Tip: Use STEP to walk line-by-line, or RUN to execute until a breakpoint.",
-        ],
-        vars: {},
-        stack: ["main"],
-        breakpoints: new Set([17, 18, 19]),
-        hintIdx: 0,
-      };
-
-      specialAreaEl.innerHTML = `
-        <div class="debug-lab">
-          <div class="debug-head">
-            <span>DOOMDADA Debug Lab | Workspace: bridge_cipher.py</span>
-            <span id="doomStateBadge">Debugger: ready</span>
-          </div>
-          <div class="debug-layout">
-            <div id="doomCode" class="debug-code">${renderDoomdadaCodeView(-1, doomdadaDebugState.breakpoints)}</div>
-            <div>
-              <div id="doomOutput" class="debug-output">${doomdadaDebugState.terminalLines.join("\n")}</div>
-              <div id="doomVars" class="debug-vars" style="margin-top:8px;">${formatDebugVars(doomdadaDebugState.vars)}</div>
-              <div id="doomStack" class="call-stack">${formatCallStack(doomdadaDebugState.stack)}</div>
-            </div>
-          </div>
-          <div class="debug-controls">
-            <button class="btn alt" id="doomStepBtn" type="button">STEP</button>
-            <button class="btn alt" id="doomRunBtn" type="button">RUN TO END</button>
-            <button class="btn alt" id="doomResetBtn" type="button">RESET DEBUG</button>
-            <button class="btn alt" id="doomHintBtn" type="button">NEXT HINT</button>
-            <button class="btn" id="doomTemplateBtn" type="button">INSERT ANSWER TEMPLATE</button>
-          </div>
-          <div class="debug-help">Breakpoint marker: ○ none, ● active. Click a code line to toggle.</div>
-        </div>
-      `;
-
-      const doomCodeEl = document.getElementById("doomCode");
-      const doomOutputEl = document.getElementById("doomOutput");
-      const doomVarsEl = document.getElementById("doomVars");
-      const doomStackEl = document.getElementById("doomStack");
-      const doomStepBtn = document.getElementById("doomStepBtn");
-      const doomRunBtn = document.getElementById("doomRunBtn");
-      const doomResetBtn = document.getElementById("doomResetBtn");
-      const doomHintBtn = document.getElementById("doomHintBtn");
-      const doomTemplateBtn = document.getElementById("doomTemplateBtn");
-      const doomStateBadgeEl = document.getElementById("doomStateBadge");
-
-      const syncDebugUi = () => {
-        const activeStep = doomdadaDebugSteps[Math.max(0, doomdadaDebugState.stepIdx)] || null;
-        doomCodeEl.innerHTML = renderDoomdadaCodeView(activeStep ? activeStep.line : -1, doomdadaDebugState.breakpoints);
-        doomOutputEl.textContent = doomdadaDebugState.terminalLines.join("\n");
-        doomOutputEl.scrollTop = doomOutputEl.scrollHeight;
-        doomVarsEl.textContent = formatDebugVars(doomdadaDebugState.vars);
-        doomStackEl.textContent = formatCallStack(doomdadaDebugState.stack);
-        doomStateBadgeEl.textContent = activeStep && activeStep.done ? "Debugger: completed" : "Debugger: paused";
-      };
-
-      const runSingleStep = (ignoreBreakpoints = true) => {
-        if (doomdadaDebugState.stepIdx >= doomdadaDebugSteps.length - 1) {
-          setAnswerStatus("Debugger reached the end. Use your derived result or reset.");
-          return "end";
-        }
-        doomdadaDebugState.stepIdx += 1;
-        const step = doomdadaDebugSteps[doomdadaDebugState.stepIdx];
-        doomdadaDebugState.terminalLines.push(step.log);
-        doomdadaDebugState.vars = step.vars || {};
-        doomdadaDebugState.stack = step.stack || ["main"];
-        if (step.done) {
-          setAnswerStatus("Debug run complete. Final output is hidden; derive it from hints and trace.");
-          doomStateBadgeEl.textContent = "Debugger: completed";
-          syncDebugUi();
-          return "done";
-        }
-        if (!ignoreBreakpoints && doomdadaDebugState.breakpoints.has(step.line)) {
-          setAnswerStatus(`Paused at breakpoint on line ${step.line}.`);
-          doomStateBadgeEl.textContent = "Debugger: breakpoint hit";
-          syncDebugUi();
-          return "paused";
-        }
-        syncDebugUi();
-        return "continue";
-      };
-
-      doomStepBtn.addEventListener("click", () => runSingleStep(true));
-
-      doomRunBtn.addEventListener("click", () => {
-        while (doomdadaDebugState.stepIdx < doomdadaDebugSteps.length - 1) {
-          const state = runSingleStep(false);
-          if (state === "paused" || state === "done" || state === "end") {
-            break;
-          }
-        }
-      });
-
-      doomResetBtn.addEventListener("click", () => {
-        renderDoomdadaWorkbench();
-        setAnswerStatus("Debugger reset.");
-      });
-
-      doomTemplateBtn.addEventListener("click", () => {
-        answerInputEl.value = "DOOM{...}";
-        setAnswerStatus("Template inserted. Derive the exact inside text.");
-      });
-
-      doomHintBtn.addEventListener("click", () => {
-        const msg = doomdadaHints[Math.min(doomdadaDebugState.hintIdx, doomdadaHints.length - 1)];
-        doomdadaDebugState.hintIdx += 1;
-        doomdadaDebugState.terminalLines.push(`[hint] ${msg}`);
-        setAnswerStatus(msg);
-        syncDebugUi();
-      });
-
-      doomCodeEl.addEventListener("click", (event) => {
-        const lineEl = event.target.closest(".debug-line");
-        if (!lineEl) {
-          return;
-        }
-        const line = Number(lineEl.getAttribute("data-line"));
-        if (!doomdadaBreakpointLines.has(line)) {
-          setAnswerStatus(`Line ${line} is not a runtime step line.`, true);
-          return;
-        }
-        if (doomdadaDebugState.breakpoints.has(line)) {
-          doomdadaDebugState.breakpoints.delete(line);
-          setAnswerStatus(`Breakpoint removed at line ${line}.`);
-        } else {
-          doomdadaDebugState.breakpoints.add(line);
-          setAnswerStatus(`Breakpoint set at line ${line}.`);
-        }
-        syncDebugUi();
-      });
-
-      syncDebugUi();
     }
 
     function renderXhardMode() {
@@ -1523,50 +1335,11 @@ Console: waiting for input</div>
       });
     }
 
-    function renderDoomdadaGate() {
-      if (doomGateUnlocked) {
-        renderDoomdadaWorkbench();
-        return;
-      }
-
-      answerInputEl.disabled = true;
-      submitAnswerBtn.disabled = true;
-      specialAreaEl.classList.add("active");
-      specialAreaEl.innerHTML = `
-        <div class="gate-box">[ DOOMDADA TERMINAL LOCKDOWN ]</div>
-        <div class="status">Hint: favorite fruit - green outside, red inside, black seeds.</div>
-        <div class="answer-row">
-          <input id="gateInput" type="password" placeholder="Enter gate password" />
-          <button class="btn" id="gateUnlockBtn">UNLOCK</button>
-        </div>
-      `;
-
-      const gateInput = document.getElementById("gateInput");
-      const gateBtn = document.getElementById("gateUnlockBtn");
-
-      function unlockGate() {
-        const guess = gateInput.value.trim().toUpperCase();
-        if (guess === "WATERMELON") {
-          doomGateUnlocked = true;
-          answerInputEl.disabled = false;
-          submitAnswerBtn.disabled = false;
-          renderDoomdadaWorkbench();
-          setAnswerStatus("Access granted. DOOMDADA debugger lab unlocked.");
-          return;
-        }
-        setAnswerStatus("ACCESS DENIED. Wrong gate password.", true);
-      }
-
-      gateBtn.addEventListener("click", unlockGate);
-      gateInput.addEventListener("keydown", (event) => {
-        if (event.key === "Enter") {
-          unlockGate();
-        }
-      });
-    }
-
     async function openLevel(levelId, openModal = false) {
       try {
+        if (levelId === "doomdada") {
+          await syncDoomdadaStatus();
+        }
         if (levelId === "doomdada" && isDoomBlocked()) {
           setAnswerStatus(`[ BLOCK ] DOOMDADA locked. Retry in ${formatCooldownClock(getDoomCooldownRemainingMs())}.`, true);
           renderLevels();
@@ -1646,7 +1419,7 @@ Console: waiting for input</div>
         const res = await fetch(apiUrl("/api/game/submit"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ level_id: selectedLevelId, answer })
+          body: JSON.stringify({ level_id: selectedLevelId, answer, client_id: clientId })
         });
         const data = await res.json();
 
@@ -1672,8 +1445,8 @@ Console: waiting for input</div>
             });
           }
           if (selectedLevelId === "doomdada") {
-            doomAttemptsLeft = 3;
-            doomGateUnlocked = false;
+            doomAttemptsLeft = typeof data.attempts_left === "number" ? data.attempts_left : 3;
+            doomCooldownUntil = 0;
             playModalCardEl.classList.remove("glitch-1", "glitch-2", "glitch-3");
           }
           const solvedTitle = levels.find((x) => x.id === selectedLevelId)?.title || selectedLevelId.toUpperCase();
@@ -1685,21 +1458,19 @@ Console: waiting for input</div>
           renderLevels();
         } else {
           if (selectedLevelId === "doomdada") {
-            doomAttemptsLeft -= 1;
+            doomAttemptsLeft = typeof data.attempts_left === "number" ? data.attempts_left : doomAttemptsLeft;
+            if (typeof data.cooldown_remaining_seconds === "number") {
+              doomCooldownUntil = data.cooldown_remaining_seconds > 0
+                ? Date.now() + (data.cooldown_remaining_seconds * 1000)
+                : 0;
+            }
             applyModalTheme("doomdada");
-            if (doomAttemptsLeft === 2) {
-              setAnswerStatus("[WARNING BLOCK 1] Threat level ELEVATED. Attempts remaining: 2", true);
-            } else if (doomAttemptsLeft === 1) {
-              setAnswerStatus("[WARNING BLOCK 2] Threat level CRITICAL. Final attempt remaining.", true);
-            } else if (doomAttemptsLeft <= 0) {
-              doomCooldownUntil = Date.now() + 60_000;
-              doomAttemptsLeft = 3;
-              doomGateUnlocked = false;
-              setAnswerStatus("[ BLOCK ] DOOMDADA locked for 01:00 due to repeated wrong attempts.", true);
+            if (data.blocked) {
+              setAnswerStatus(data.message || "[ BLOCK ] DOOMDADA locked due to repeated wrong attempts.", true);
               renderLevels();
               closePlayModal();
               selectedLevelId = "";
-              logRunner("doomdada.locked(cooldown=60s)");
+              logRunner("doomdada.locked(cooldown=backend)");
               return;
             }
           }
@@ -1721,6 +1492,7 @@ Console: waiting for input</div>
           return;
         }
         levels = await res.json();
+        await syncDoomdadaStatus();
         renderLevels();
         if (levels.length) {
           openLevel(levels[0].id);
@@ -1737,7 +1509,7 @@ Console: waiting for input</div>
       levelStartTimes.clear();
       solvedTimeline.length = 0;
       doomAttemptsLeft = 3;
-      doomGateUnlocked = false;
+      doomCooldownUntil = 0;
       if (crazyState.timerId) {
         clearInterval(crazyState.timerId);
         crazyState.timerId = null;

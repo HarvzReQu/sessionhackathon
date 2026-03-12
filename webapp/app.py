@@ -4,6 +4,7 @@ import secrets
 import subprocess
 import string
 import sys
+import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -96,6 +97,7 @@ class GameLevelDetail(BaseModel):
 class SubmitAnswerRequest(BaseModel):
     level_id: str = Field(min_length=1, max_length=20)
     answer: str = Field(min_length=1, max_length=200)
+    client_id: str | None = Field(default=None, max_length=64)
 
 
 class SubmitAnswerResponse(BaseModel):
@@ -103,6 +105,80 @@ class SubmitAnswerResponse(BaseModel):
     correct: bool
     points: int
     message: str
+    blocked: bool = False
+    attempts_left: int | None = None
+    cooldown_remaining_seconds: int | None = None
+
+
+class DoomdadaStatusResponse(BaseModel):
+    blocked: bool
+    attempts_left: int
+    cooldown_remaining_seconds: int
+
+
+@dataclass
+class DoomdadaClientState:
+    attempts_left: int = 3
+    cooldown_until: float = 0.0
+
+
+class DoomdadaGuard:
+    def __init__(self) -> None:
+        self._lock = Lock()
+        self._states: dict[str, DoomdadaClientState] = {}
+
+    def _key(self, client_id: str | None) -> str:
+        value = (client_id or "anonymous").strip()
+        if not value:
+            return "anonymous"
+        return value[:64]
+
+    def _state(self, key: str) -> DoomdadaClientState:
+        state = self._states.get(key)
+        if state is None:
+            state = DoomdadaClientState()
+            self._states[key] = state
+        return state
+
+    def status(self, client_id: str | None) -> DoomdadaStatusResponse:
+        key = self._key(client_id)
+        with self._lock:
+            state = self._state(key)
+            now = time.time()
+            if state.cooldown_until <= now and state.attempts_left == 0:
+                state.attempts_left = 3
+                state.cooldown_until = 0.0
+
+            remaining = max(0, int(state.cooldown_until - now + 0.999))
+            blocked = remaining > 0
+            return DoomdadaStatusResponse(
+                blocked=blocked,
+                attempts_left=state.attempts_left,
+                cooldown_remaining_seconds=remaining,
+            )
+
+    def mark_success(self, client_id: str | None) -> DoomdadaStatusResponse:
+        key = self._key(client_id)
+        with self._lock:
+            state = self._state(key)
+            state.attempts_left = 3
+            state.cooldown_until = 0.0
+        return self.status(client_id)
+
+    def mark_failure(self, client_id: str | None) -> DoomdadaStatusResponse:
+        key = self._key(client_id)
+        with self._lock:
+            state = self._state(key)
+            now = time.time()
+            if state.cooldown_until > now:
+                remaining = max(0, int(state.cooldown_until - now + 0.999))
+                return DoomdadaStatusResponse(blocked=True, attempts_left=0, cooldown_remaining_seconds=remaining)
+
+            state.attempts_left = max(0, state.attempts_left - 1)
+            if state.attempts_left == 0:
+                state.cooldown_until = now + 60.0
+
+        return self.status(client_id)
 
 
 GAME_LEVELS: list[GameLevel] = [
@@ -216,6 +292,7 @@ class LobbyStore:
 
 
 store = LobbyStore()
+doomdada_guard = DoomdadaGuard()
 app = FastAPI(title="DOOMDADA Bootcamp Lobby")
 BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"
@@ -324,6 +401,11 @@ def get_game_level_detail(level_id: str) -> GameLevelDetail:
     )
 
 
+@app.get("/api/game/doomdada/status", response_model=DoomdadaStatusResponse)
+def get_doomdada_status(client_id: str | None = None) -> DoomdadaStatusResponse:
+    return doomdada_guard.status(client_id)
+
+
 @app.post("/api/game/submit", response_model=SubmitAnswerResponse)
 def submit_game_answer(payload: SubmitAnswerRequest) -> SubmitAnswerResponse:
     level_id = payload.level_id.strip().lower()
@@ -331,19 +413,51 @@ def submit_game_answer(payload: SubmitAnswerRequest) -> SubmitAnswerResponse:
     if not expected:
         raise HTTPException(status_code=404, detail="Level not found")
 
+    if level_id == "doomdada":
+        current = doomdada_guard.status(payload.client_id)
+        if current.blocked:
+            return SubmitAnswerResponse(
+                level_id=level_id,
+                correct=False,
+                points=0,
+                message=f"[ BLOCK ] DOOMDADA locked for {current.cooldown_remaining_seconds}s.",
+                blocked=True,
+                attempts_left=current.attempts_left,
+                cooldown_remaining_seconds=current.cooldown_remaining_seconds,
+            )
+
     is_correct = payload.answer.strip().upper() == expected.upper()
     points = 0
     message = "Incorrect answer. Review the challenge and try again."
+    blocked = False
+    attempts_left: int | None = None
+    cooldown_remaining_seconds: int | None = None
 
     if is_correct:
         points = next((lvl.points for lvl in GAME_LEVELS if lvl.id == level_id), 0)
         message = f"Correct! +{points} points"
+        if level_id == "doomdada":
+            status = doomdada_guard.mark_success(payload.client_id)
+            attempts_left = status.attempts_left
+            cooldown_remaining_seconds = status.cooldown_remaining_seconds
+    elif level_id == "doomdada":
+        status = doomdada_guard.mark_failure(payload.client_id)
+        blocked = status.blocked
+        attempts_left = status.attempts_left
+        cooldown_remaining_seconds = status.cooldown_remaining_seconds
+        if blocked:
+            message = f"[ BLOCK ] DOOMDADA locked for {cooldown_remaining_seconds}s due to repeated wrong attempts."
+        else:
+            message = f"Incorrect answer. Attempts remaining: {attempts_left}."
 
     return SubmitAnswerResponse(
         level_id=level_id,
         correct=is_correct,
         points=points,
         message=message,
+        blocked=blocked,
+        attempts_left=attempts_left,
+        cooldown_remaining_seconds=cooldown_remaining_seconds,
     )
 
 
