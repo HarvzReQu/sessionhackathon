@@ -9,3 +9,6 @@ venv/
 # OS/editor noise
 .DS_Store
 Thumbs.db
+
+# Local runtime data
+webapp/game_progress.db

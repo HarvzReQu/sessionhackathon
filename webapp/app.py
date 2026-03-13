@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import secrets
+import sqlite3
 import subprocess
 import string
 import sys
@@ -149,22 +150,49 @@ class DoomdadaClientState:
     cooldown_until: float = 0.0
 
 
-@dataclass
-class PlayerProgress:
-    client_id: str
-    player_name: str = "Anonymous"
-    score: int = 0
-    solved_levels: set[str] = field(default_factory=set)
-    total_submissions: int = 0
-    correct_submissions: int = 0
-    last_level_id: str | None = None
-    last_activity: str | None = None
-
-
 class GameProgressStore:
-    def __init__(self) -> None:
+    def __init__(self, db_path: Path) -> None:
         self._lock = Lock()
-        self._players: dict[str, PlayerProgress] = {}
+        self._db_path = str(db_path)
+        self._init_db()
+
+    def _connect(self) -> sqlite3.Connection:
+        conn = sqlite3.connect(self._db_path)
+        conn.row_factory = sqlite3.Row
+        return conn
+
+    def _init_db(self) -> None:
+        with self._connect() as conn:
+            conn.executescript(
+                """
+                CREATE TABLE IF NOT EXISTS players (
+                    client_id TEXT PRIMARY KEY,
+                    player_name TEXT NOT NULL,
+                    score INTEGER NOT NULL DEFAULT 0,
+                    total_submissions INTEGER NOT NULL DEFAULT 0,
+                    correct_submissions INTEGER NOT NULL DEFAULT 0,
+                    last_level_id TEXT,
+                    last_activity TEXT
+                );
+
+                CREATE TABLE IF NOT EXISTS solved_levels (
+                    client_id TEXT NOT NULL,
+                    level_id TEXT NOT NULL,
+                    solved_at TEXT NOT NULL,
+                    PRIMARY KEY (client_id, level_id)
+                );
+
+                CREATE TABLE IF NOT EXISTS submissions (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    client_id TEXT NOT NULL,
+                    player_name TEXT NOT NULL,
+                    level_id TEXT NOT NULL,
+                    correct INTEGER NOT NULL,
+                    points INTEGER NOT NULL,
+                    submitted_at TEXT NOT NULL
+                );
+                """
+            )
 
     def _key(self, client_id: str | None) -> str:
         value = (client_id or "anonymous").strip()
@@ -176,22 +204,26 @@ class GameProgressStore:
         value = (player_name or "").strip()
         return value[:40] if value else "Anonymous"
 
-    def _entry(self, client_id: str | None, player_name: str | None = None) -> PlayerProgress:
-        key = self._key(client_id)
-        entry = self._players.get(key)
-        if entry is None:
-            entry = PlayerProgress(client_id=key)
-            self._players[key] = entry
-
-        display_name = self._display_name(player_name)
-        if display_name != "Anonymous":
-            entry.player_name = display_name
-        return entry
-
     def heartbeat(self, client_id: str, player_name: str) -> None:
+        key = self._key(client_id)
+        display_name = self._display_name(player_name)
+        now = utc_now()
         with self._lock:
-            entry = self._entry(client_id, player_name)
-            entry.last_activity = utc_now()
+            with self._connect() as conn:
+                conn.execute(
+                    """
+                    INSERT INTO players (
+                        client_id, player_name, score, total_submissions, correct_submissions, last_level_id, last_activity
+                    ) VALUES (?, ?, 0, 0, 0, NULL, ?)
+                    ON CONFLICT(client_id) DO UPDATE SET
+                        player_name = CASE
+                            WHEN excluded.player_name <> 'Anonymous' THEN excluded.player_name
+                            ELSE players.player_name
+                        END,
+                        last_activity = excluded.last_activity
+                    """,
+                    (key, display_name, now),
+                )
 
     def record_submission(
         self,
@@ -202,48 +234,105 @@ class GameProgressStore:
         correct: bool,
         points: int,
     ) -> None:
-        with self._lock:
-            entry = self._entry(client_id, player_name)
-            entry.total_submissions += 1
-            entry.last_level_id = level_id
-            entry.last_activity = utc_now()
+        key = self._key(client_id)
+        display_name = self._display_name(player_name)
+        now = utc_now()
+        point_value = max(0, points)
+        correct_value = 1 if correct else 0
 
-            if correct:
-                entry.correct_submissions += 1
-                if level_id not in entry.solved_levels:
-                    entry.solved_levels.add(level_id)
-                    entry.score += max(0, points)
+        with self._lock:
+            with self._connect() as conn:
+                conn.execute(
+                    """
+                    INSERT INTO submissions (
+                        client_id, player_name, level_id, correct, points, submitted_at
+                    ) VALUES (?, ?, ?, ?, ?, ?)
+                    """,
+                    (key, display_name, level_id, correct_value, point_value if correct else 0, now),
+                )
+
+                conn.execute(
+                    """
+                    INSERT INTO players (
+                        client_id, player_name, score, total_submissions, correct_submissions, last_level_id, last_activity
+                    ) VALUES (?, ?, 0, 1, ?, ?, ?)
+                    ON CONFLICT(client_id) DO UPDATE SET
+                        player_name = CASE
+                            WHEN excluded.player_name <> 'Anonymous' THEN excluded.player_name
+                            ELSE players.player_name
+                        END,
+                        total_submissions = players.total_submissions + 1,
+                        correct_submissions = players.correct_submissions + excluded.correct_submissions,
+                        last_level_id = excluded.last_level_id,
+                        last_activity = excluded.last_activity
+                    """,
+                    (key, display_name, correct_value, level_id, now),
+                )
+
+                if correct:
+                    cursor = conn.execute(
+                        """
+                        INSERT OR IGNORE INTO solved_levels (client_id, level_id, solved_at)
+                        VALUES (?, ?, ?)
+                        """,
+                        (key, level_id, now),
+                    )
+                    if cursor.rowcount:
+                        conn.execute(
+                            "UPDATE players SET score = score + ? WHERE client_id = ?",
+                            (point_value, key),
+                        )
 
     def summary(self) -> ClassroomSummaryResponse:
         with self._lock:
-            players = sorted(
-                self._players.values(),
-                key=lambda item: (-item.score, -item.correct_submissions, item.player_name.lower()),
-            )
+            with self._connect() as conn:
+                rows = conn.execute(
+                    """
+                    SELECT client_id, player_name, score, total_submissions, correct_submissions, last_level_id, last_activity
+                    FROM players
+                    ORDER BY score DESC, correct_submissions DESC, lower(player_name) ASC
+                    """
+                ).fetchall()
 
-            payload = [
-                ClassroomPlayerSummary(
-                    client_id=item.client_id,
-                    player_name=item.player_name,
-                    score=item.score,
-                    solved_count=len(item.solved_levels),
-                    solved_levels=sorted(item.solved_levels),
-                    total_submissions=item.total_submissions,
-                    correct_submissions=item.correct_submissions,
-                    accuracy=round((item.correct_submissions / item.total_submissions) * 100, 1)
-                    if item.total_submissions
-                    else 0.0,
-                    last_level_id=item.last_level_id,
-                    last_activity=item.last_activity,
-                )
-                for item in players
-            ]
+                payload: list[ClassroomPlayerSummary] = []
+                total_submissions = 0
+                total_solves = 0
+
+                for row in rows:
+                    solved_rows = conn.execute(
+                        """
+                        SELECT level_id FROM solved_levels
+                        WHERE client_id = ?
+                        ORDER BY level_id ASC
+                        """,
+                        (row["client_id"],),
+                    ).fetchall()
+                    solved_levels = [item["level_id"] for item in solved_rows]
+                    submissions_count = int(row["total_submissions"] or 0)
+                    solves_count = int(row["correct_submissions"] or 0)
+                    total_submissions += submissions_count
+                    total_solves += solves_count
+
+                    payload.append(
+                        ClassroomPlayerSummary(
+                            client_id=row["client_id"],
+                            player_name=row["player_name"],
+                            score=int(row["score"] or 0),
+                            solved_count=len(solved_levels),
+                            solved_levels=solved_levels,
+                            total_submissions=submissions_count,
+                            correct_submissions=solves_count,
+                            accuracy=round((solves_count / submissions_count) * 100, 1) if submissions_count else 0.0,
+                            last_level_id=row["last_level_id"],
+                            last_activity=row["last_activity"],
+                        )
+                    )
 
             return ClassroomSummaryResponse(
                 generated_at=utc_now(),
                 active_players=len(payload),
-                total_submissions=sum(item.total_submissions for item in players),
-                total_solves=sum(item.correct_submissions for item in players),
+                total_submissions=total_submissions,
+                total_solves=total_solves,
                 players=payload,
             )
 
@@ -425,7 +514,7 @@ class LobbyStore:
 
 store = LobbyStore()
 doomdada_guard = DoomdadaGuard()
-progress_store = GameProgressStore()
+progress_store = GameProgressStore(Path(__file__).resolve().parent / "game_progress.db")
 app = FastAPI(title="DOOMDADA Bootcamp Lobby")
 BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"
