@@ -635,6 +635,15 @@
     .admin-creds.hidden {
       display: none;
     }
+    .admin-creds-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+      margin-top: 8px;
+    }
+    .admin-creds-actions.hidden {
+      display: none;
+    }
     .modal-card {
       width: min(980px, 100%);
       max-height: 92vh;
@@ -907,6 +916,10 @@
           <button class="btn" id="createLobbyBtn" type="button">Create Lobby</button>
         </div>
         <div id="adminCreds" class="admin-creds hidden"></div>
+        <div id="adminCredsActions" class="admin-creds-actions hidden">
+          <button class="btn alt" id="toggleTokenBtn" type="button">Reveal Token</button>
+          <button class="btn alt" id="copyTokenBtn" type="button">Copy Token</button>
+        </div>
       </div>
 
       <div id="joinStatus" class="status">Waiting for room code and player name.</div>
@@ -1040,6 +1053,9 @@ Console: waiting for input</div>
     const joinAdminNameEl = document.getElementById("joinAdminName");
     const createLobbyBtn = document.getElementById("createLobbyBtn");
     const adminCredsEl = document.getElementById("adminCreds");
+    const adminCredsActionsEl = document.getElementById("adminCredsActions");
+    const toggleTokenBtn = document.getElementById("toggleTokenBtn");
+    const copyTokenBtn = document.getElementById("copyTokenBtn");
     const joinStatusEl = document.getElementById("joinStatus");
     const playModalEl = document.getElementById("playModal");
     const closeModalBtn = document.getElementById("closeModalBtn");
@@ -1100,6 +1116,9 @@ Console: waiting for input</div>
     let hasJoinedLobby = false;
     let levelsLoaded = false;
     let joinMode = "player";
+    let adminRoomCode = "";
+    let adminToken = "";
+    let tokenVisible = false;
 
     const doomdadaScriptCode = `# DOOMDADA Final Boss Script (BROKEN ON PURPOSE)
   # Storyline: Bridge Boy left a damaged script, not direct clues.
@@ -1310,6 +1329,30 @@ Console: waiting for input</div>
       joinStatusEl.classList.toggle("error", isError);
     }
 
+    function maskedToken(value) {
+      if (!value) {
+        return "";
+      }
+      if (value.length <= 8) {
+        return "*".repeat(value.length);
+      }
+      return `${value.slice(0, 4)}${"*".repeat(value.length - 8)}${value.slice(-4)}`;
+    }
+
+    function refreshAdminCreds() {
+      if (!adminRoomCode || !adminToken) {
+        adminCredsEl.classList.add("hidden");
+        adminCredsActionsEl.classList.add("hidden");
+        return;
+      }
+
+      adminCredsEl.classList.remove("hidden");
+      adminCredsActionsEl.classList.remove("hidden");
+      const shownToken = tokenVisible ? adminToken : maskedToken(adminToken);
+      adminCredsEl.textContent = `Lobby Created\nRoom Code: ${adminRoomCode}\nAdmin Token: ${shownToken}\n\nNext:\n1) Share room code with players\n2) Open admin dashboard at /static/admin.html to monitor class`;
+      toggleTokenBtn.textContent = tokenVisible ? "Hide Token" : "Reveal Token";
+    }
+
     function setJoinMode(mode) {
       joinMode = mode;
       const playerMode = mode === "player";
@@ -1413,8 +1456,8 @@ Console: waiting for input</div>
         }
 
         const roomCode = data && data.room_code ? String(data.room_code).toUpperCase() : "";
-        const adminToken = data && data.admin_token ? String(data.admin_token) : "";
-        if (!roomCode || !adminToken) {
+        const createdToken = data && data.admin_token ? String(data.admin_token) : "";
+        if (!roomCode || !createdToken) {
           setJoinStatus("Unexpected server response while creating lobby.", true);
           return;
         }
@@ -1425,8 +1468,10 @@ Console: waiting for input</div>
         joinRoomCodeEl.value = roomCode;
         lobbyJoinStatusEl.textContent = `Admin lobby ready: ${roomCode}. Share this room code with players so they can join.`;
 
-        adminCredsEl.classList.remove("hidden");
-        adminCredsEl.textContent = `Lobby Created\nRoom Code: ${roomCode}\nAdmin Token: ${adminToken}\n\nNext:\n1) Share room code with players\n2) Open admin dashboard at /static/admin.html to monitor class`;
+        adminRoomCode = roomCode;
+        adminToken = createdToken;
+        tokenVisible = false;
+        refreshAdminCreds();
         setJoinStatus(`Lobby created. Share room code ${roomCode} with players.`, false);
       } catch {
         setJoinStatus("Network error while creating lobby.", true);
@@ -2100,6 +2145,37 @@ Console: waiting for input</div>
     });
     joinLobbyBtn.addEventListener("click", joinLobby);
     createLobbyBtn.addEventListener("click", createAdminLobby);
+    toggleTokenBtn.addEventListener("click", () => {
+      if (!adminToken) {
+        return;
+      }
+      tokenVisible = !tokenVisible;
+      refreshAdminCreds();
+    });
+    copyTokenBtn.addEventListener("click", async () => {
+      if (!adminToken) {
+        setJoinStatus("No admin token available to copy.", true);
+        return;
+      }
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(adminToken);
+        } else {
+          const temp = document.createElement("textarea");
+          temp.value = adminToken;
+          temp.setAttribute("readonly", "");
+          temp.style.position = "absolute";
+          temp.style.left = "-9999px";
+          document.body.appendChild(temp);
+          temp.select();
+          document.execCommand("copy");
+          document.body.removeChild(temp);
+        }
+        setJoinStatus("Admin token copied to clipboard.", false);
+      } catch {
+        setJoinStatus("Could not copy token automatically. Reveal and copy manually.", true);
+      }
+    });
     joinModePlayerBtn.addEventListener("click", () => setJoinMode("player"));
     joinModeAdminBtn.addEventListener("click", () => setJoinMode("admin"));
     joinRoomCodeEl.addEventListener("keydown", (event) => {
