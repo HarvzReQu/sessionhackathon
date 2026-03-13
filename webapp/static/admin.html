@@ -130,9 +130,84 @@
       font-size: 1.15rem;
       color: #86efac;
     }
+    .podium {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin: 0 0 12px;
+    }
+    .podium-card {
+      border: 1px solid #2d4457;
+      border-radius: 10px;
+      background: #0a141f;
+      padding: 10px;
+      min-height: 94px;
+    }
+    .podium-card .place {
+      display: inline-block;
+      font-size: 0.78rem;
+      border-radius: 999px;
+      padding: 2px 8px;
+      margin-bottom: 8px;
+      border: 1px solid #35506a;
+    }
+    .podium-card .name {
+      font-size: 0.98rem;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .podium-card .meta {
+      color: var(--muted);
+      font-size: 0.83rem;
+      line-height: 1.35;
+      white-space: pre-wrap;
+    }
+    .podium-card.gold {
+      border-color: #b98d1f;
+      background: linear-gradient(145deg, #241b07, #1d1405);
+    }
+    .podium-card.gold .place {
+      color: #f7d774;
+      border-color: #c49a2b;
+      background: rgba(196, 154, 43, 0.16);
+    }
+    .podium-card.silver {
+      border-color: #7d8ea0;
+      background: linear-gradient(145deg, #1a2129, #121920);
+    }
+    .podium-card.silver .place {
+      color: #d4dde7;
+      border-color: #90a1b4;
+      background: rgba(144, 161, 180, 0.16);
+    }
+    .podium-card.bronze {
+      border-color: #9a6541;
+      background: linear-gradient(145deg, #23170f, #1a120b);
+    }
+    .podium-card.bronze .place {
+      color: #e2b191;
+      border-color: #af7852;
+      background: rgba(175, 120, 82, 0.16);
+    }
+    .rank-rest {
+      color: #a3afbd;
+    }
+    .rank-1 td {
+      background: rgba(185, 141, 31, 0.1);
+    }
+    .rank-2 td {
+      background: rgba(144, 161, 180, 0.1);
+    }
+    .rank-3 td {
+      background: rgba(175, 120, 82, 0.1);
+    }
+    .rank-rest td {
+      color: #9ca8b6;
+    }
     @media (max-width: 860px) {
       .metrics { grid-template-columns: repeat(2, 1fr); }
       .classroom-summary { grid-template-columns: repeat(2, 1fr); }
+      .podium { grid-template-columns: 1fr; }
       .row { grid-template-columns: 1fr; }
     }
   </style>
@@ -200,19 +275,26 @@
           <div class="pill"><span>Total Solves</span><strong id="totalSolves">0</strong></div>
           <div class="pill"><span>Updated At</span><strong id="classroomUpdatedAt">-</strong></div>
         </div>
+        <div id="podium" class="podium">
+          <div class="podium-card gold"><span class="place">1st - Gold</span><div class="name">Waiting...</div><div class="meta">No data yet.</div></div>
+          <div class="podium-card silver"><span class="place">2nd - Silver</span><div class="name">Waiting...</div><div class="meta">No data yet.</div></div>
+          <div class="podium-card bronze"><span class="place">3rd - Bronze</span><div class="name">Waiting...</div><div class="meta">No data yet.</div></div>
+        </div>
         <table>
           <thead>
             <tr>
+              <th>Rank</th>
               <th>Player</th>
               <th>Score</th>
               <th>Solved</th>
               <th>Accuracy</th>
-              <th>Last Level</th>
+              <th>Current Challenge</th>
+              <th>Time Interval</th>
               <th>Last Activity (UTC)</th>
             </tr>
           </thead>
           <tbody id="classroomTable">
-            <tr><td colspan="6">No classroom activity yet.</td></tr>
+            <tr><td colspan="8">No classroom activity yet.</td></tr>
           </tbody>
         </table>
       </div>
@@ -236,6 +318,7 @@
     const totalSolvesEl = document.getElementById("totalSolves");
     const classroomUpdatedAtEl = document.getElementById("classroomUpdatedAt");
     const classroomTableEl = document.getElementById("classroomTable");
+    const podiumEl = document.getElementById("podium");
     const API_BASE = window.location.protocol === "file:" ? "http://127.0.0.1:8000" : "";
 
     let roomCode = "";
@@ -289,19 +372,58 @@
 
     function paintClassroomTable(players) {
       if (!players.length) {
-        classroomTableEl.innerHTML = '<tr><td colspan="6">No classroom activity yet.</td></tr>';
+        classroomTableEl.innerHTML = '<tr><td colspan="8">No classroom activity yet.</td></tr>';
         return;
       }
-      classroomTableEl.innerHTML = players.map((p) => `
-        <tr>
+      classroomTableEl.innerHTML = players.map((p, idx) => {
+        const rank = idx + 1;
+        const rowClass = rank === 1 ? "rank-1" : rank === 2 ? "rank-2" : rank === 3 ? "rank-3" : "rank-rest";
+        return `
+        <tr class="${rowClass}">
+          <td>${rank <= 3 ? (rank === 1 ? "GOLD" : rank === 2 ? "SILVER" : "BRONZE") : `<span class="rank-rest">#${rank}</span>`}</td>
           <td>${p.player_name}</td>
           <td>${p.score}</td>
           <td>${p.solved_count}</td>
           <td>${p.accuracy}% (${p.correct_submissions}/${p.total_submissions})</td>
-          <td>${p.last_level_id || "-"}</td>
+          <td>${(p.last_level_id || "-").toString().toUpperCase()}</td>
+          <td>${formatInterval(p.last_activity)}</td>
           <td>${p.last_activity || "-"}</td>
         </tr>
-      `).join("");
+      `;
+      }).join("");
+    }
+
+    function formatInterval(lastActivityIso) {
+      if (!lastActivityIso) {
+        return "-";
+      }
+      const t = Date.parse(lastActivityIso);
+      if (Number.isNaN(t)) {
+        return "-";
+      }
+      const delta = Math.max(0, Math.floor((Date.now() - t) / 1000));
+      if (delta < 60) {
+        return `${delta}s ago`;
+      }
+      const mins = Math.floor(delta / 60);
+      const secs = delta % 60;
+      return `${mins}m ${secs}s ago`;
+    }
+
+    function paintPodium(players) {
+      const places = [
+        { cls: "gold", label: "1st - Gold" },
+        { cls: "silver", label: "2nd - Silver" },
+        { cls: "bronze", label: "3rd - Bronze" },
+      ];
+
+      podiumEl.innerHTML = places.map((slot, idx) => {
+        const p = players[idx];
+        if (!p) {
+          return `<div class="podium-card ${slot.cls}"><span class="place">${slot.label}</span><div class="name">Waiting...</div><div class="meta">No player in this slot yet.</div></div>`;
+        }
+        return `<div class="podium-card ${slot.cls}"><span class="place">${slot.label}</span><div class="name">${p.player_name}</div><div class="meta">Score: ${p.score}\nSolved: ${p.solved_count}\nCurrent: ${(p.last_level_id || "-").toString().toUpperCase()}\nInterval: ${formatInterval(p.last_activity)}</div></div>`;
+      }).join("");
     }
 
     async function refreshClassroomSummary() {
@@ -314,11 +436,13 @@
           return;
         }
         const data = await res.json();
+        const players = Array.isArray(data.players) ? data.players : [];
         activePlayersEl.textContent = String(data.active_players || 0);
         totalSubmissionsEl.textContent = String(data.total_submissions || 0);
         totalSolvesEl.textContent = String(data.total_solves || 0);
         classroomUpdatedAtEl.textContent = (data.generated_at || "-").replace("T", " ").replace("+00:00", "Z");
-        paintClassroomTable(Array.isArray(data.players) ? data.players : []);
+        paintPodium(players);
+        paintClassroomTable(players);
       } catch {
       }
     }
@@ -416,6 +540,28 @@
       window.open(url, "_blank", "noopener,noreferrer");
     });
 
+    function hydrateFromQueryParams() {
+      const params = new URLSearchParams(window.location.search);
+      const qpRoom = (params.get("room_code") || "").trim().toUpperCase();
+      const qpToken = (params.get("token") || "").trim();
+      const qpAdmin = (params.get("admin_name") || "").trim();
+
+      if (qpAdmin) {
+        adminNameInput.value = qpAdmin;
+      }
+      if (qpRoom && qpToken) {
+        roomCode = qpRoom;
+        adminToken = qpToken;
+        roomCodeEl.textContent = roomCode;
+        startGameBtn.disabled = false;
+        exportCsvBtn.disabled = false;
+        setStatus(`Connected to room ${roomCode} via secure admin link.`);
+        refreshAdminStats();
+        refreshClassroomSummary();
+      }
+    }
+
+    hydrateFromQueryParams();
     setInterval(refreshAdminStats, 2500);
     setInterval(refreshClassroomSummary, 3000);
     refreshClassroomSummary();

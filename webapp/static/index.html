@@ -917,6 +917,7 @@
         </div>
         <div id="adminCreds" class="admin-creds hidden"></div>
         <div id="adminCredsActions" class="admin-creds-actions hidden">
+          <button class="btn alt" id="openAdminDashboardBtn" type="button">Open Admin Dashboard</button>
           <button class="btn alt" id="toggleTokenBtn" type="button">Reveal Token</button>
           <button class="btn alt" id="copyTokenBtn" type="button">Copy Token</button>
         </div>
@@ -1054,6 +1055,7 @@ Console: waiting for input</div>
     const createLobbyBtn = document.getElementById("createLobbyBtn");
     const adminCredsEl = document.getElementById("adminCreds");
     const adminCredsActionsEl = document.getElementById("adminCredsActions");
+    const openAdminDashboardBtn = document.getElementById("openAdminDashboardBtn");
     const toggleTokenBtn = document.getElementById("toggleTokenBtn");
     const copyTokenBtn = document.getElementById("copyTokenBtn");
     const joinStatusEl = document.getElementById("joinStatus");
@@ -1351,6 +1353,13 @@ Console: waiting for input</div>
       const shownToken = tokenVisible ? adminToken : maskedToken(adminToken);
       adminCredsEl.textContent = `Lobby Created\nRoom Code: ${adminRoomCode}\nAdmin Token: ${shownToken}\n\nNext:\n1) Share room code with players\n2) Open admin dashboard at /static/admin.html to monitor class`;
       toggleTokenBtn.textContent = tokenVisible ? "Hide Token" : "Reveal Token";
+    }
+
+    function adminDashboardUrl() {
+      const adminName = encodeURIComponent((joinAdminNameEl.value || "").trim());
+      const room = encodeURIComponent(adminRoomCode);
+      const token = encodeURIComponent(adminToken);
+      return apiUrl(`/static/admin.html?room_code=${room}&token=${token}&admin_name=${adminName}`);
     }
 
     function setJoinMode(mode) {
@@ -2175,6 +2184,14 @@ Console: waiting for input</div>
       } catch {
         setJoinStatus("Could not copy token automatically. Reveal and copy manually.", true);
       }
+    });
+    openAdminDashboardBtn.addEventListener("click", () => {
+      if (!adminRoomCode || !adminToken) {
+        setJoinStatus("Create a lobby first to open the admin dashboard.", true);
+        return;
+      }
+      window.open(adminDashboardUrl(), "_blank", "noopener,noreferrer");
+      setJoinStatus("Admin dashboard opened in a new tab.", false);
     });
     joinModePlayerBtn.addEventListener("click", () => setJoinMode("player"));
     joinModeAdminBtn.addEventListener("click", () => setJoinMode("admin"));
