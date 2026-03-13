@@ -1401,7 +1401,7 @@ Console: waiting for input</div>
         const res = await fetch(apiUrl("/api/lobby/join"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ room_code: roomCode, name: playerName, role: "player" })
+          body: JSON.stringify({ room_code: roomCode, name: playerName, role: "player", client_id: clientId })
         });
         const data = await readJsonSafe(res);
 

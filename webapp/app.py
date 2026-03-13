@@ -38,6 +38,7 @@ def make_token() -> str:
 class Visitor:
     name: str
     role: Literal["player", "spectator"]
+    client_id: str | None = None
     joined_at: str = field(default_factory=utc_now)
 
 
@@ -65,6 +66,7 @@ class JoinLobbyRequest(BaseModel):
     room_code: str = Field(min_length=4, max_length=8)
     name: str = Field(min_length=1, max_length=40)
     role: Literal["player", "spectator"] = "player"
+    client_id: str | None = Field(default=None, max_length=64)
 
 
 class PublicStats(BaseModel):
@@ -518,7 +520,17 @@ class LobbyStore:
             raise KeyError(code)
         return lobby
 
-    def join_lobby(self, room_code: str, name: str, role: Literal["player", "spectator"]) -> Lobby:
+    def _normalize_client_id(self, client_id: str | None) -> str | None:
+        value = (client_id or "").strip()
+        return value[:64] if value else None
+
+    def join_lobby(
+        self,
+        room_code: str,
+        name: str,
+        role: Literal["player", "spectator"],
+        client_id: str | None = None,
+    ) -> Lobby:
         with self._lock:
             lobby = self.get_lobby(room_code)
             if lobby.lobby_status == "live":
@@ -526,8 +538,24 @@ class LobbyStore:
             display_name = name.strip()
             if any(v.name.lower() == display_name.lower() for v in lobby.visitors):
                 raise ValueError("name-taken")
-            lobby.visitors.append(Visitor(name=display_name, role=role))
+            lobby.visitors.append(Visitor(name=display_name, role=role, client_id=self._normalize_client_id(client_id)))
             return lobby
+
+    def is_joined_player(self, room_code: str, name: str, client_id: str | None) -> bool:
+        lobby = self.get_lobby(room_code)
+        target_name = name.strip().lower()
+        normalized_client = self._normalize_client_id(client_id)
+
+        for visitor in lobby.visitors:
+            if visitor.role != "player":
+                continue
+            if visitor.name.strip().lower() != target_name:
+                continue
+            if visitor.client_id and normalized_client and visitor.client_id != normalized_client:
+                return False
+            return True
+
+        return False
 
     def start_game(self, room_code: str, admin_token: str) -> Lobby:
         with self._lock:
@@ -613,7 +641,7 @@ def create_lobby(payload: CreateLobbyRequest) -> CreateLobbyResponse:
 @app.post("/api/lobby/join")
 def join_lobby(payload: JoinLobbyRequest) -> dict[str, str | PublicStats]:
     try:
-        store.join_lobby(payload.room_code, payload.name, payload.role)
+        store.join_lobby(payload.room_code, payload.name, payload.role, payload.client_id)
     except KeyError:
         raise HTTPException(status_code=404, detail="Room code not found")
     except RuntimeError:
@@ -694,6 +722,10 @@ def get_doomdada_status(client_id: str | None = None) -> DoomdadaStatusResponse:
 
 @app.post("/api/game/session/heartbeat")
 def register_player_session(payload: SessionHeartbeatRequest) -> dict[str, str]:
+    room_code = (payload.room_code or "").strip().upper()
+    if room_code:
+        if not store.is_joined_player(room_code, payload.player_name, payload.client_id):
+            raise HTTPException(status_code=403, detail="Player must join this room before activity is tracked")
     progress_store.heartbeat(payload.client_id, payload.player_name, payload.room_code)
     return {"message": "Session updated"}
 
@@ -729,6 +761,12 @@ def export_classroom_csv(room_code: str, token: str) -> Response:
 
 @app.post("/api/game/submit", response_model=SubmitAnswerResponse)
 def submit_game_answer(payload: SubmitAnswerRequest) -> SubmitAnswerResponse:
+    room_code = (payload.room_code or "").strip().upper()
+    player_name = (payload.player_name or "").strip()
+    if room_code and player_name:
+        if not store.is_joined_player(room_code, player_name, payload.client_id):
+            raise HTTPException(status_code=403, detail="Player must join this room before submitting answers")
+
     level_id = payload.level_id.strip().lower()
     expected = GAME_ANSWER_KEY.get(level_id)
     if not expected:
