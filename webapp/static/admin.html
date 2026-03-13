@@ -154,6 +154,7 @@
         </div>
         <div class="actions">
           <button id="startGameBtn" disabled>Start Game</button>
+          <button id="exportCsvBtn" disabled>Export CSV</button>
         </div>
         <div id="status" class="status">No active lobby yet.</div>
       </div>
@@ -222,6 +223,7 @@
     const adminNameInput = document.getElementById("adminName");
     const createLobbyBtn = document.getElementById("createLobbyBtn");
     const startGameBtn = document.getElementById("startGameBtn");
+    const exportCsvBtn = document.getElementById("exportCsvBtn");
     const statusEl = document.getElementById("status");
     const roomCodeEl = document.getElementById("roomCode");
     const lobbyStatusEl = document.getElementById("lobbyStatus");
@@ -303,8 +305,11 @@
     }
 
     async function refreshClassroomSummary() {
+      if (!roomCode || !adminToken) {
+        return;
+      }
       try {
-        const res = await fetch(apiUrl("/api/game/classroom/summary"));
+        const res = await fetch(apiUrl(`/api/game/classroom/summary?room_code=${encodeURIComponent(roomCode)}&token=${encodeURIComponent(adminToken)}`));
         if (!res.ok) {
           return;
         }
@@ -361,8 +366,10 @@
         adminToken = data.admin_token;
         roomCodeEl.textContent = roomCode;
         startGameBtn.disabled = false;
+        exportCsvBtn.disabled = false;
         setStatus(`Lobby created: ${roomCode}. Share this with students: doomdada.com (room code ${roomCode}).`);
         refreshAdminStats();
+        refreshClassroomSummary();
       } catch (err) {
         setStatus(`Network error while creating lobby: ${err && err.message ? err.message : "request failed"}`);
       } finally {
@@ -398,6 +405,15 @@
         setStatus(`Network error while starting game: ${err && err.message ? err.message : "request failed"}`);
         startGameBtn.disabled = false;
       }
+    });
+
+    exportCsvBtn.addEventListener("click", () => {
+      if (!roomCode || !adminToken) {
+        setStatus("Create a lobby first.");
+        return;
+      }
+      const url = apiUrl(`/api/game/classroom/export.csv?room_code=${encodeURIComponent(roomCode)}&token=${encodeURIComponent(adminToken)}`);
+      window.open(url, "_blank", "noopener,noreferrer");
     });
 
     setInterval(refreshAdminStats, 2500);

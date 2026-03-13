@@ -6,13 +6,15 @@ import subprocess
 import string
 import sys
 import time
+import csv
+import io
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from threading import Lock
 from typing import Literal
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
@@ -100,6 +102,7 @@ class SubmitAnswerRequest(BaseModel):
     answer: str = Field(min_length=1, max_length=200)
     client_id: str | None = Field(default=None, max_length=64)
     player_name: str | None = Field(default=None, max_length=40)
+    room_code: str | None = Field(default=None, max_length=8)
 
 
 class SubmitAnswerResponse(BaseModel):
@@ -121,6 +124,7 @@ class DoomdadaStatusResponse(BaseModel):
 class SessionHeartbeatRequest(BaseModel):
     client_id: str = Field(min_length=1, max_length=64)
     player_name: str = Field(min_length=1, max_length=40)
+    room_code: str | None = Field(default=None, max_length=8)
 
 
 class ClassroomPlayerSummary(BaseModel):
@@ -167,6 +171,7 @@ class GameProgressStore:
                 """
                 CREATE TABLE IF NOT EXISTS players (
                     client_id TEXT PRIMARY KEY,
+                    room_code TEXT NOT NULL DEFAULT 'GLOBAL',
                     player_name TEXT NOT NULL,
                     score INTEGER NOT NULL DEFAULT 0,
                     total_submissions INTEGER NOT NULL DEFAULT 0,
@@ -177,6 +182,7 @@ class GameProgressStore:
 
                 CREATE TABLE IF NOT EXISTS solved_levels (
                     client_id TEXT NOT NULL,
+                    room_code TEXT NOT NULL DEFAULT 'GLOBAL',
                     level_id TEXT NOT NULL,
                     solved_at TEXT NOT NULL,
                     PRIMARY KEY (client_id, level_id)
@@ -185,6 +191,7 @@ class GameProgressStore:
                 CREATE TABLE IF NOT EXISTS submissions (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     client_id TEXT NOT NULL,
+                    room_code TEXT NOT NULL DEFAULT 'GLOBAL',
                     player_name TEXT NOT NULL,
                     level_id TEXT NOT NULL,
                     correct INTEGER NOT NULL,
@@ -193,19 +200,36 @@ class GameProgressStore:
                 );
                 """
             )
+            self._ensure_column(conn, "players", "room_code", "TEXT NOT NULL DEFAULT 'GLOBAL'")
+            self._ensure_column(conn, "solved_levels", "room_code", "TEXT NOT NULL DEFAULT 'GLOBAL'")
+            self._ensure_column(conn, "submissions", "room_code", "TEXT NOT NULL DEFAULT 'GLOBAL'")
 
-    def _key(self, client_id: str | None) -> str:
+    def _ensure_column(self, conn: sqlite3.Connection, table: str, column: str, definition: str) -> None:
+        rows = conn.execute(f"PRAGMA table_info({table})").fetchall()
+        if any(row[1] == column for row in rows):
+            return
+        conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
+
+    def _room(self, room_code: str | None) -> str:
+        value = (room_code or "GLOBAL").strip().upper()
+        if not value:
+            return "GLOBAL"
+        return value[:8]
+
+    def _key(self, client_id: str | None, room_code: str | None = None) -> str:
         value = (client_id or "anonymous").strip()
         if not value:
-            return "anonymous"
-        return value[:64]
+            value = "anonymous"
+        room = self._room(room_code)
+        return f"{room}:{value[:64]}"
 
     def _display_name(self, player_name: str | None) -> str:
         value = (player_name or "").strip()
         return value[:40] if value else "Anonymous"
 
-    def heartbeat(self, client_id: str, player_name: str) -> None:
-        key = self._key(client_id)
+    def heartbeat(self, client_id: str, player_name: str, room_code: str | None = None) -> None:
+        room = self._room(room_code)
+        key = self._key(client_id, room)
         display_name = self._display_name(player_name)
         now = utc_now()
         with self._lock:
@@ -213,16 +237,17 @@ class GameProgressStore:
                 conn.execute(
                     """
                     INSERT INTO players (
-                        client_id, player_name, score, total_submissions, correct_submissions, last_level_id, last_activity
-                    ) VALUES (?, ?, 0, 0, 0, NULL, ?)
+                        client_id, room_code, player_name, score, total_submissions, correct_submissions, last_level_id, last_activity
+                    ) VALUES (?, ?, ?, 0, 0, 0, NULL, ?)
                     ON CONFLICT(client_id) DO UPDATE SET
+                        room_code = excluded.room_code,
                         player_name = CASE
                             WHEN excluded.player_name <> 'Anonymous' THEN excluded.player_name
                             ELSE players.player_name
                         END,
                         last_activity = excluded.last_activity
                     """,
-                    (key, display_name, now),
+                    (key, room, display_name, now),
                 )
 
     def record_submission(
@@ -230,11 +255,13 @@ class GameProgressStore:
         *,
         client_id: str | None,
         player_name: str | None,
+        room_code: str | None,
         level_id: str,
         correct: bool,
         points: int,
     ) -> None:
-        key = self._key(client_id)
+        room = self._room(room_code)
+        key = self._key(client_id, room)
         display_name = self._display_name(player_name)
         now = utc_now()
         point_value = max(0, points)
@@ -245,18 +272,19 @@ class GameProgressStore:
                 conn.execute(
                     """
                     INSERT INTO submissions (
-                        client_id, player_name, level_id, correct, points, submitted_at
-                    ) VALUES (?, ?, ?, ?, ?, ?)
+                        client_id, room_code, player_name, level_id, correct, points, submitted_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?)
                     """,
-                    (key, display_name, level_id, correct_value, point_value if correct else 0, now),
+                    (key, room, display_name, level_id, correct_value, point_value if correct else 0, now),
                 )
 
                 conn.execute(
                     """
                     INSERT INTO players (
-                        client_id, player_name, score, total_submissions, correct_submissions, last_level_id, last_activity
-                    ) VALUES (?, ?, 0, 1, ?, ?, ?)
+                        client_id, room_code, player_name, score, total_submissions, correct_submissions, last_level_id, last_activity
+                    ) VALUES (?, ?, ?, 0, 1, ?, ?, ?)
                     ON CONFLICT(client_id) DO UPDATE SET
+                        room_code = excluded.room_code,
                         player_name = CASE
                             WHEN excluded.player_name <> 'Anonymous' THEN excluded.player_name
                             ELSE players.player_name
@@ -266,16 +294,16 @@ class GameProgressStore:
                         last_level_id = excluded.last_level_id,
                         last_activity = excluded.last_activity
                     """,
-                    (key, display_name, correct_value, level_id, now),
+                    (key, room, display_name, correct_value, level_id, now),
                 )
 
                 if correct:
                     cursor = conn.execute(
                         """
-                        INSERT OR IGNORE INTO solved_levels (client_id, level_id, solved_at)
-                        VALUES (?, ?, ?)
+                        INSERT OR IGNORE INTO solved_levels (client_id, room_code, level_id, solved_at)
+                        VALUES (?, ?, ?, ?)
                         """,
-                        (key, level_id, now),
+                        (key, room, level_id, now),
                     )
                     if cursor.rowcount:
                         conn.execute(
@@ -283,15 +311,19 @@ class GameProgressStore:
                             (point_value, key),
                         )
 
-    def summary(self) -> ClassroomSummaryResponse:
+    def summary(self, room_code: str | None) -> ClassroomSummaryResponse:
+        room = self._room(room_code)
         with self._lock:
             with self._connect() as conn:
                 rows = conn.execute(
                     """
                     SELECT client_id, player_name, score, total_submissions, correct_submissions, last_level_id, last_activity
                     FROM players
+                    WHERE room_code = ?
                     ORDER BY score DESC, correct_submissions DESC, lower(player_name) ASC
                     """
+                    ,
+                    (room,),
                 ).fetchall()
 
                 payload: list[ClassroomPlayerSummary] = []
@@ -303,9 +335,10 @@ class GameProgressStore:
                         """
                         SELECT level_id FROM solved_levels
                         WHERE client_id = ?
+                        AND room_code = ?
                         ORDER BY level_id ASC
                         """,
-                        (row["client_id"],),
+                        (row["client_id"], room),
                     ).fetchall()
                     solved_levels = [item["level_id"] for item in solved_rows]
                     submissions_count = int(row["total_submissions"] or 0)
@@ -335,6 +368,37 @@ class GameProgressStore:
                 total_solves=total_solves,
                 players=payload,
             )
+
+    def export_csv(self, room_code: str | None) -> str:
+        summary = self.summary(room_code)
+        buffer = io.StringIO()
+        writer = csv.writer(buffer)
+        writer.writerow([
+            "player_name",
+            "score",
+            "solved_count",
+            "solved_levels",
+            "accuracy_percent",
+            "correct_submissions",
+            "total_submissions",
+            "last_level_id",
+            "last_activity",
+            "client_id",
+        ])
+        for player in summary.players:
+            writer.writerow([
+                player.player_name,
+                player.score,
+                player.solved_count,
+                "|".join(player.solved_levels),
+                player.accuracy,
+                player.correct_submissions,
+                player.total_submissions,
+                player.last_level_id or "",
+                player.last_activity or "",
+                player.client_id,
+            ])
+        return buffer.getvalue()
 
 
 class DoomdadaGuard:
@@ -630,13 +694,37 @@ def get_doomdada_status(client_id: str | None = None) -> DoomdadaStatusResponse:
 
 @app.post("/api/game/session/heartbeat")
 def register_player_session(payload: SessionHeartbeatRequest) -> dict[str, str]:
-    progress_store.heartbeat(payload.client_id, payload.player_name)
+    progress_store.heartbeat(payload.client_id, payload.player_name, payload.room_code)
     return {"message": "Session updated"}
 
 
 @app.get("/api/game/classroom/summary", response_model=ClassroomSummaryResponse)
-def get_classroom_summary() -> ClassroomSummaryResponse:
-    return progress_store.summary()
+def get_classroom_summary(room_code: str, token: str) -> ClassroomSummaryResponse:
+    try:
+        store.admin_stats(room_code, token)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Room code not found")
+    except PermissionError:
+        raise HTTPException(status_code=403, detail="Invalid admin token")
+
+    return progress_store.summary(room_code)
+
+
+@app.get("/api/game/classroom/export.csv")
+def export_classroom_csv(room_code: str, token: str) -> Response:
+    try:
+        store.admin_stats(room_code, token)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Room code not found")
+    except PermissionError:
+        raise HTTPException(status_code=403, detail="Invalid admin token")
+
+    csv_text = progress_store.export_csv(room_code)
+    return Response(
+        content=csv_text,
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="classroom_progress_{room_code.upper()}.csv"'},
+    )
 
 
 @app.post("/api/game/submit", response_model=SubmitAnswerResponse)
@@ -652,6 +740,7 @@ def submit_game_answer(payload: SubmitAnswerRequest) -> SubmitAnswerResponse:
             progress_store.record_submission(
                 client_id=payload.client_id,
                 player_name=payload.player_name,
+                room_code=payload.room_code,
                 level_id=level_id,
                 correct=False,
                 points=0,
@@ -693,6 +782,7 @@ def submit_game_answer(payload: SubmitAnswerRequest) -> SubmitAnswerResponse:
     progress_store.record_submission(
         client_id=payload.client_id,
         player_name=payload.player_name,
+        room_code=payload.room_code,
         level_id=level_id,
         correct=is_correct,
         points=points,

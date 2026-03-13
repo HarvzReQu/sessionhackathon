@@ -735,6 +735,8 @@
       <div class="controls">
         <span>Player:</span>
         <input id="playerName" type="text" placeholder="Presenter" />
+        <span>Room:</span>
+        <input id="roomCodeInput" type="text" maxlength="8" placeholder="ROOM123" style="text-transform:uppercase;" />
         <button class="btn" id="btnWhat">About Category</button>
         <button class="btn" id="btnHow">Challenge Rules</button>
         <button class="btn" id="btnBeginner">Beginner Tutorial</button>
@@ -876,6 +878,7 @@ Console: waiting for input</div>
     const perfPointsEl = document.getElementById("perfPoints");
     const perfChartEl = document.getElementById("perfChart");
     const playerNameEl = document.getElementById("playerName");
+    const roomCodeInputEl = document.getElementById("roomCodeInput");
     const missionBriefEl = document.getElementById("missionBrief");
     const challengeTitleEl = document.getElementById("challengeTitle");
     const challengeMetaEl = document.getElementById("challengeMeta");
@@ -946,6 +949,8 @@ Console: waiting for input</div>
       }
       return existing;
     })();
+    const savedRoomCode = localStorage.getItem("doomdada_room_code_v1") || "";
+    roomCodeInputEl.value = savedRoomCode;
 
     const doomdadaScriptCode = `# DOOMDADA Final Boss Script (BROKEN ON PURPOSE)
   # Storyline: Bridge Boy left a damaged script, not direct clues.
@@ -1139,13 +1144,19 @@ Console: waiting for input</div>
       return `${API_BASE}${path}`;
     }
 
+    function currentRoomCode() {
+      const value = (roomCodeInputEl.value || "").trim().toUpperCase();
+      return value || null;
+    }
+
     async function syncPlayerSession() {
       const playerName = (playerNameEl.value || "Presenter").trim() || "Presenter";
+      const roomCode = currentRoomCode();
       try {
         await fetch(apiUrl("/api/game/session/heartbeat"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ client_id: clientId, player_name: playerName })
+          body: JSON.stringify({ client_id: clientId, player_name: playerName, room_code: roomCode })
         });
       } catch {
         // Keep gameplay working even if heartbeat fails.
@@ -1628,7 +1639,8 @@ Console: waiting for input</div>
             level_id: selectedLevelId,
             answer,
             client_id: clientId,
-            player_name: (playerNameEl.value || "Presenter").trim() || "Presenter"
+            player_name: (playerNameEl.value || "Presenter").trim() || "Presenter",
+            room_code: currentRoomCode()
           })
         });
         const data = await res.json();
@@ -1772,6 +1784,11 @@ Console: waiting for input</div>
     btnResetProgress.addEventListener("click", resetProgress);
     playerNameEl.addEventListener("input", () => {
       renderPerformanceBoard();
+      syncPlayerSession();
+    });
+    roomCodeInputEl.addEventListener("input", () => {
+      roomCodeInputEl.value = (roomCodeInputEl.value || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8);
+      localStorage.setItem("doomdada_room_code_v1", roomCodeInputEl.value);
       syncPlayerSession();
     });
     closeModalBtn.addEventListener("click", closePlayModal);
