@@ -98,6 +98,7 @@ class SubmitAnswerRequest(BaseModel):
     level_id: str = Field(min_length=1, max_length=20)
     answer: str = Field(min_length=1, max_length=200)
     client_id: str | None = Field(default=None, max_length=64)
+    player_name: str | None = Field(default=None, max_length=40)
 
 
 class SubmitAnswerResponse(BaseModel):
@@ -116,10 +117,135 @@ class DoomdadaStatusResponse(BaseModel):
     cooldown_remaining_seconds: int
 
 
+class SessionHeartbeatRequest(BaseModel):
+    client_id: str = Field(min_length=1, max_length=64)
+    player_name: str = Field(min_length=1, max_length=40)
+
+
+class ClassroomPlayerSummary(BaseModel):
+    client_id: str
+    player_name: str
+    score: int
+    solved_count: int
+    solved_levels: list[str]
+    total_submissions: int
+    correct_submissions: int
+    accuracy: float
+    last_level_id: str | None = None
+    last_activity: str | None = None
+
+
+class ClassroomSummaryResponse(BaseModel):
+    generated_at: str
+    active_players: int
+    total_submissions: int
+    total_solves: int
+    players: list[ClassroomPlayerSummary]
+
+
 @dataclass
 class DoomdadaClientState:
     attempts_left: int = 3
     cooldown_until: float = 0.0
+
+
+@dataclass
+class PlayerProgress:
+    client_id: str
+    player_name: str = "Anonymous"
+    score: int = 0
+    solved_levels: set[str] = field(default_factory=set)
+    total_submissions: int = 0
+    correct_submissions: int = 0
+    last_level_id: str | None = None
+    last_activity: str | None = None
+
+
+class GameProgressStore:
+    def __init__(self) -> None:
+        self._lock = Lock()
+        self._players: dict[str, PlayerProgress] = {}
+
+    def _key(self, client_id: str | None) -> str:
+        value = (client_id or "anonymous").strip()
+        if not value:
+            return "anonymous"
+        return value[:64]
+
+    def _display_name(self, player_name: str | None) -> str:
+        value = (player_name or "").strip()
+        return value[:40] if value else "Anonymous"
+
+    def _entry(self, client_id: str | None, player_name: str | None = None) -> PlayerProgress:
+        key = self._key(client_id)
+        entry = self._players.get(key)
+        if entry is None:
+            entry = PlayerProgress(client_id=key)
+            self._players[key] = entry
+
+        display_name = self._display_name(player_name)
+        if display_name != "Anonymous":
+            entry.player_name = display_name
+        return entry
+
+    def heartbeat(self, client_id: str, player_name: str) -> None:
+        with self._lock:
+            entry = self._entry(client_id, player_name)
+            entry.last_activity = utc_now()
+
+    def record_submission(
+        self,
+        *,
+        client_id: str | None,
+        player_name: str | None,
+        level_id: str,
+        correct: bool,
+        points: int,
+    ) -> None:
+        with self._lock:
+            entry = self._entry(client_id, player_name)
+            entry.total_submissions += 1
+            entry.last_level_id = level_id
+            entry.last_activity = utc_now()
+
+            if correct:
+                entry.correct_submissions += 1
+                if level_id not in entry.solved_levels:
+                    entry.solved_levels.add(level_id)
+                    entry.score += max(0, points)
+
+    def summary(self) -> ClassroomSummaryResponse:
+        with self._lock:
+            players = sorted(
+                self._players.values(),
+                key=lambda item: (-item.score, -item.correct_submissions, item.player_name.lower()),
+            )
+
+            payload = [
+                ClassroomPlayerSummary(
+                    client_id=item.client_id,
+                    player_name=item.player_name,
+                    score=item.score,
+                    solved_count=len(item.solved_levels),
+                    solved_levels=sorted(item.solved_levels),
+                    total_submissions=item.total_submissions,
+                    correct_submissions=item.correct_submissions,
+                    accuracy=round((item.correct_submissions / item.total_submissions) * 100, 1)
+                    if item.total_submissions
+                    else 0.0,
+                    last_level_id=item.last_level_id,
+                    last_activity=item.last_activity,
+                )
+                for item in players
+            ]
+
+            return ClassroomSummaryResponse(
+                generated_at=utc_now(),
+                active_players=len(payload),
+                total_submissions=sum(item.total_submissions for item in players),
+                total_solves=sum(item.correct_submissions for item in players),
+                players=payload,
+            )
 
 
 class DoomdadaGuard:
@@ -299,6 +425,7 @@ class LobbyStore:
 
 store = LobbyStore()
 doomdada_guard = DoomdadaGuard()
+progress_store = GameProgressStore()
 app = FastAPI(title="DOOMDADA Bootcamp Lobby")
 BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"
@@ -412,6 +539,17 @@ def get_doomdada_status(client_id: str | None = None) -> DoomdadaStatusResponse:
     return doomdada_guard.status(client_id)
 
 
+@app.post("/api/game/session/heartbeat")
+def register_player_session(payload: SessionHeartbeatRequest) -> dict[str, str]:
+    progress_store.heartbeat(payload.client_id, payload.player_name)
+    return {"message": "Session updated"}
+
+
+@app.get("/api/game/classroom/summary", response_model=ClassroomSummaryResponse)
+def get_classroom_summary() -> ClassroomSummaryResponse:
+    return progress_store.summary()
+
+
 @app.post("/api/game/submit", response_model=SubmitAnswerResponse)
 def submit_game_answer(payload: SubmitAnswerRequest) -> SubmitAnswerResponse:
     level_id = payload.level_id.strip().lower()
@@ -422,6 +560,13 @@ def submit_game_answer(payload: SubmitAnswerRequest) -> SubmitAnswerResponse:
     if level_id == "doomdada":
         current = doomdada_guard.status(payload.client_id)
         if current.blocked:
+            progress_store.record_submission(
+                client_id=payload.client_id,
+                player_name=payload.player_name,
+                level_id=level_id,
+                correct=False,
+                points=0,
+            )
             return SubmitAnswerResponse(
                 level_id=level_id,
                 correct=False,
@@ -455,6 +600,14 @@ def submit_game_answer(payload: SubmitAnswerRequest) -> SubmitAnswerResponse:
             message = f"[ BLOCK ] DOOMDADA locked for {cooldown_remaining_seconds}s due to repeated wrong attempts."
         else:
             message = f"Incorrect answer. Attempts remaining: {attempts_left}."
+
+    progress_store.record_submission(
+        client_id=payload.client_id,
+        player_name=payload.player_name,
+        level_id=level_id,
+        correct=is_correct,
+        points=points,
+    )
 
     return SubmitAnswerResponse(
         level_id=level_id,

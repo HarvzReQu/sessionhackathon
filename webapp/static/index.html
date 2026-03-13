@@ -1139,6 +1139,19 @@ Console: waiting for input</div>
       return `${API_BASE}${path}`;
     }
 
+    async function syncPlayerSession() {
+      const playerName = (playerNameEl.value || "Presenter").trim() || "Presenter";
+      try {
+        await fetch(apiUrl("/api/game/session/heartbeat"), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ client_id: clientId, player_name: playerName })
+        });
+      } catch {
+        // Keep gameplay working even if heartbeat fails.
+      }
+    }
+
     function setAnswerStatus(text, isError = false) {
       answerStatusEl.textContent = text;
       answerStatusEl.classList.toggle("error", isError);
@@ -1611,7 +1624,12 @@ Console: waiting for input</div>
         const res = await fetch(apiUrl("/api/game/submit"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ level_id: selectedLevelId, answer, client_id: clientId })
+          body: JSON.stringify({
+            level_id: selectedLevelId,
+            answer,
+            client_id: clientId,
+            player_name: (playerNameEl.value || "Presenter").trim() || "Presenter"
+          })
         });
         const data = await res.json();
 
@@ -1686,6 +1704,7 @@ Console: waiting for input</div>
           return;
         }
         levels = await res.json();
+        await syncPlayerSession();
         await syncDoomdadaStatus();
         updateChallengeProgress();
         renderLevels();
@@ -1751,7 +1770,10 @@ Console: waiting for input</div>
     btnBeginner.addEventListener("click", () => { missionBriefEl.textContent = infoBriefs.beginner; });
     btnStory.addEventListener("click", () => { missionBriefEl.textContent = infoBriefs.story; });
     btnResetProgress.addEventListener("click", resetProgress);
-    playerNameEl.addEventListener("input", renderPerformanceBoard);
+    playerNameEl.addEventListener("input", () => {
+      renderPerformanceBoard();
+      syncPlayerSession();
+    });
     closeModalBtn.addEventListener("click", closePlayModal);
     dismissOnboardBtn.addEventListener("click", () => {
       onboardTipEl.classList.add("hidden");
@@ -1789,6 +1811,7 @@ Console: waiting for input</div>
     renderPerformanceBoard();
     updateChallengeProgress();
     loadLevels();
+    setInterval(syncPlayerSession, 30000);
   </script>
 </body>
 </html>
