@@ -204,10 +204,58 @@
     .rank-rest td {
       color: #9ca8b6;
     }
+    .trend-wrap {
+      border: 1px solid #2d4457;
+      border-radius: 10px;
+      background: #08121d;
+      padding: 10px;
+      margin: 0 0 12px;
+    }
+    .trend-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 8px;
+      color: #b6c6d8;
+      font-size: 0.86rem;
+    }
+    .trend-chart {
+      width: 100%;
+      height: auto;
+      border: 1px solid #2a3f52;
+      background: #050c14;
+      display: block;
+    }
+    .trend-legend {
+      margin-top: 8px;
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 6px;
+      font-size: 0.8rem;
+      color: #9fb0c0;
+    }
+    .trend-item {
+      border: 1px solid #2a3f52;
+      border-radius: 8px;
+      background: #0a141f;
+      padding: 6px;
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      min-height: 32px;
+    }
+    .trend-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 999px;
+      flex: 0 0 auto;
+    }
     @media (max-width: 860px) {
       .metrics { grid-template-columns: repeat(2, 1fr); }
       .classroom-summary { grid-template-columns: repeat(2, 1fr); }
       .podium { grid-template-columns: 1fr; }
+      .trend-legend { grid-template-columns: 1fr 1fr; }
       .row { grid-template-columns: 1fr; }
     }
   </style>
@@ -280,6 +328,14 @@
           <div class="podium-card silver"><span class="place">2nd - Silver</span><div class="name">Waiting...</div><div class="meta">No data yet.</div></div>
           <div class="podium-card bronze"><span class="place">3rd - Bronze</span><div class="name">Waiting...</div><div class="meta">No data yet.</div></div>
         </div>
+        <div class="trend-wrap">
+          <div class="trend-head">
+            <strong>Live Top-5 Score Trend</strong>
+            <span>Updated every refresh tick</span>
+          </div>
+          <svg id="trendChart" class="trend-chart" viewBox="0 0 720 230" preserveAspectRatio="none" role="img" aria-label="Top 5 score trend chart"></svg>
+          <div id="trendLegend" class="trend-legend"></div>
+        </div>
         <table>
           <thead>
             <tr>
@@ -319,7 +375,13 @@
     const classroomUpdatedAtEl = document.getElementById("classroomUpdatedAt");
     const classroomTableEl = document.getElementById("classroomTable");
     const podiumEl = document.getElementById("podium");
+    const trendChartEl = document.getElementById("trendChart");
+    const trendLegendEl = document.getElementById("trendLegend");
     const API_BASE = window.location.protocol === "file:" ? "http://127.0.0.1:8000" : "";
+
+    const trendPalette = ["#facc15", "#e2e8f0", "#fb923c", "#60a5fa", "#34d399"];
+    const scoreHistory = new Map();
+    let trendTick = 0;
 
     let roomCode = "";
     let adminToken = "";
@@ -426,6 +488,85 @@
       }).join("");
     }
 
+    function updateScoreHistory(players) {
+      trendTick += 1;
+      players.slice(0, 5).forEach((player) => {
+        const key = player.player_name;
+        const arr = scoreHistory.get(key) || [];
+        arr.push({ tick: trendTick, score: Number(player.score || 0) });
+        if (arr.length > 30) {
+          arr.shift();
+        }
+        scoreHistory.set(key, arr);
+      });
+    }
+
+    function paintTrendChart(players) {
+      const top = players.slice(0, 5);
+      if (!top.length) {
+        trendChartEl.innerHTML = '<text x="360" y="116" text-anchor="middle" font-size="14" fill="#7f95ab">Waiting for player scores...</text>';
+        trendLegendEl.innerHTML = '<div class="trend-item">No trend data yet.</div>';
+        return;
+      }
+
+      const left = 34;
+      const right = 705;
+      const topPad = 12;
+      const bottom = 206;
+      const width = right - left;
+      const height = bottom - topPad;
+
+      const tickValues = [];
+      const scoreValues = [0];
+      top.forEach((player) => {
+        const hist = scoreHistory.get(player.player_name) || [];
+        hist.forEach((point) => {
+          tickValues.push(point.tick);
+          scoreValues.push(point.score);
+        });
+      });
+
+      const minTick = tickValues.length ? Math.min(...tickValues) : trendTick;
+      const maxTick = tickValues.length ? Math.max(...tickValues) : (trendTick + 1);
+      const maxScore = Math.max(1, ...scoreValues);
+
+      const xForTick = (tick) => {
+        if (maxTick === minTick) {
+          return left + width / 2;
+        }
+        return left + ((tick - minTick) / (maxTick - minTick)) * width;
+      };
+      const yForScore = (score) => bottom - (Math.max(0, score) / maxScore) * height;
+
+      const rows = [0.25, 0.5, 0.75, 1].map((ratio) => {
+        const y = (bottom - (ratio * height)).toFixed(2);
+        const label = Math.round(maxScore * ratio);
+        return `<line x1="${left}" y1="${y}" x2="${right}" y2="${y}" stroke="#243447" stroke-width="1"></line><text x="6" y="${Number(y) + 4}" font-size="10" fill="#8297ad">${label}</text>`;
+      }).join("");
+
+      let polylines = "";
+      let dots = "";
+      trendLegendEl.innerHTML = top.map((player, idx) => {
+        const color = trendPalette[idx % trendPalette.length];
+        const hist = scoreHistory.get(player.player_name) || [];
+        if (hist.length) {
+          const pts = hist.map((point) => `${xForTick(point.tick).toFixed(2)},${yForScore(point.score).toFixed(2)}`).join(" ");
+          polylines += `<polyline points="${pts}" fill="none" stroke="${color}" stroke-width="2.4"></polyline>`;
+          const last = hist[hist.length - 1];
+          dots += `<circle cx="${xForTick(last.tick).toFixed(2)}" cy="${yForScore(last.score).toFixed(2)}" r="3.1" fill="${color}"></circle>`;
+        }
+        return `<div class="trend-item"><span class="trend-dot" style="background:${color}"></span><span>${idx + 1}. ${player.player_name} (${player.score})</span></div>`;
+      }).join("");
+
+      trendChartEl.innerHTML = `
+        <line x1="${left}" y1="${bottom}" x2="${right}" y2="${bottom}" stroke="#2f4658" stroke-width="1.2"></line>
+        <line x1="${left}" y1="${topPad}" x2="${left}" y2="${bottom}" stroke="#2f4658" stroke-width="1.2"></line>
+        ${rows}
+        ${polylines}
+        ${dots}
+      `;
+    }
+
     async function refreshClassroomSummary() {
       if (!roomCode || !adminToken) {
         return;
@@ -437,11 +578,13 @@
         }
         const data = await res.json();
         const players = Array.isArray(data.players) ? data.players : [];
+        updateScoreHistory(players);
         activePlayersEl.textContent = String(data.active_players || 0);
         totalSubmissionsEl.textContent = String(data.total_submissions || 0);
         totalSolvesEl.textContent = String(data.total_solves || 0);
         classroomUpdatedAtEl.textContent = (data.generated_at || "-").replace("T", " ").replace("+00:00", "Z");
         paintPodium(players);
+        paintTrendChart(players);
         paintClassroomTable(players);
       } catch {
       }
