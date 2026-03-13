@@ -554,6 +554,61 @@
       animation: modalFadeIn 180ms ease;
     }
     .modal.hidden { display: none; }
+    .join-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(1, 6, 10, 0.9);
+      display: grid;
+      place-items: center;
+      padding: 16px;
+      z-index: 1001;
+    }
+    .join-modal.hidden { display: none; }
+    .join-card {
+      width: min(540px, 100%);
+      border: 1px solid #42617f;
+      background:
+        radial-gradient(circle at 85% 12%, rgba(26, 164, 255, 0.2), transparent 36%),
+        linear-gradient(145deg, #0c1421, #121b2a);
+      box-shadow: 0 18px 42px rgba(0, 0, 0, 0.6);
+      padding: 14px;
+      display: grid;
+      gap: 10px;
+    }
+    .join-card h3 {
+      margin: 0;
+      color: #9fef00;
+      font-size: 1.05rem;
+    }
+    .join-card p {
+      margin: 0;
+      color: #b9cbe0;
+      font-size: 0.9rem;
+      line-height: 1.35;
+    }
+    .join-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .join-grid label {
+      display: grid;
+      gap: 6px;
+      color: #a8bfd6;
+      font-size: 0.84rem;
+    }
+    .join-grid input {
+      border: 1px solid #4b6380;
+      background: #08121d;
+      color: #d6e3ef;
+      padding: 8px;
+      font: inherit;
+    }
+    .join-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+    }
     .modal-card {
       width: min(980px, 100%);
       max-height: 92vh;
@@ -744,6 +799,7 @@
       </div>
 
       <div class="ctf-note">CTF Flow: Read prompt -> inspect script -> use hints only when needed -> submit flag in exact format.</div>
+      <div id="lobbyJoinStatus" class="ctf-note">Lobby: Not joined yet. Enter room code to start.</div>
 
       <div class="toggles">
         <label><input type="checkbox" checked disabled />Boost Mode (coming soon)</label>
@@ -787,6 +843,27 @@
 
       <div class="challenge-teaser">Click any Play button to open that challenge in a focused game window.</div>
     </section>
+  </div>
+
+  <div id="joinModal" class="join-modal">
+    <div class="join-card">
+      <h3>Join Classroom Lobby</h3>
+      <p>Enter the room code from your teacher and your player name. You cannot play challenges until you join.</p>
+      <div class="join-grid">
+        <label>
+          Room Code
+          <input id="joinRoomCode" type="text" maxlength="8" placeholder="ABC123" autocomplete="off" />
+        </label>
+        <label>
+          Player Name
+          <input id="joinPlayerName" type="text" maxlength="40" placeholder="Your Name" autocomplete="off" />
+        </label>
+      </div>
+      <div class="join-actions">
+        <button class="btn" id="joinLobbyBtn" type="button">Join as Player</button>
+      </div>
+      <div id="joinStatus" class="status">Waiting for room code and player name.</div>
+    </div>
   </div>
 
   <div id="playModal" class="modal hidden">
@@ -879,6 +956,7 @@ Console: waiting for input</div>
     const perfChartEl = document.getElementById("perfChart");
     const playerNameEl = document.getElementById("playerName");
     const roomCodeInputEl = document.getElementById("roomCodeInput");
+    const lobbyJoinStatusEl = document.getElementById("lobbyJoinStatus");
     const missionBriefEl = document.getElementById("missionBrief");
     const challengeTitleEl = document.getElementById("challengeTitle");
     const challengeMetaEl = document.getElementById("challengeMeta");
@@ -904,6 +982,11 @@ Console: waiting for input</div>
     const btnInsertLeet = document.getElementById("btnInsertLeet");
     const btnInsertCase = document.getElementById("btnInsertCase");
     const btnInsertBuild = document.getElementById("btnInsertBuild");
+    const joinModalEl = document.getElementById("joinModal");
+    const joinRoomCodeEl = document.getElementById("joinRoomCode");
+    const joinPlayerNameEl = document.getElementById("joinPlayerName");
+    const joinLobbyBtn = document.getElementById("joinLobbyBtn");
+    const joinStatusEl = document.getElementById("joinStatus");
     const playModalEl = document.getElementById("playModal");
     const closeModalBtn = document.getElementById("closeModalBtn");
     const onboardTipEl = document.getElementById("onboardTip");
@@ -950,7 +1033,16 @@ Console: waiting for input</div>
       return existing;
     })();
     const savedRoomCode = localStorage.getItem("doomdada_room_code_v1") || "";
+    const savedPlayerName = localStorage.getItem("doomdada_player_name_v1") || "";
     roomCodeInputEl.value = savedRoomCode;
+    if (savedPlayerName) {
+      playerNameEl.value = savedPlayerName;
+    }
+    joinRoomCodeEl.value = savedRoomCode;
+    joinPlayerNameEl.value = savedPlayerName || playerNameEl.value || "";
+
+    let hasJoinedLobby = false;
+    let levelsLoaded = false;
 
     const doomdadaScriptCode = `# DOOMDADA Final Boss Script (BROKEN ON PURPOSE)
   # Storyline: Bridge Boy left a damaged script, not direct clues.
@@ -1144,12 +1236,93 @@ Console: waiting for input</div>
       return `${API_BASE}${path}`;
     }
 
+    async function readJsonSafe(res) {
+      const text = await res.text();
+      if (!text) {
+        return null;
+      }
+      try {
+        return JSON.parse(text);
+      } catch {
+        return { detail: text };
+      }
+    }
+
+    function setJoinStatus(text, isError = false) {
+      joinStatusEl.textContent = text;
+      joinStatusEl.classList.toggle("error", isError);
+    }
+
     function currentRoomCode() {
       const value = (roomCodeInputEl.value || "").trim().toUpperCase();
       return value || null;
     }
 
+    async function joinLobby() {
+      const roomCode = (joinRoomCodeEl.value || "").trim().toUpperCase();
+      const playerName = (joinPlayerNameEl.value || "").trim();
+
+      if (!roomCode) {
+        setJoinStatus("Room code is required.", true);
+        return;
+      }
+      if (!playerName) {
+        setJoinStatus("Player name is required.", true);
+        return;
+      }
+
+      joinLobbyBtn.disabled = true;
+      setJoinStatus("Joining lobby...", false);
+
+      try {
+        const res = await fetch(apiUrl("/api/lobby/join"), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ room_code: roomCode, name: playerName, role: "player" })
+        });
+        const data = await readJsonSafe(res);
+
+        if (!res.ok) {
+          if (res.status === 409) {
+            setJoinStatus("Name already exists in this room. Add a number and try again.", true);
+          } else {
+            setJoinStatus((data && data.detail) || `Could not join room (HTTP ${res.status}).`, true);
+          }
+          return;
+        }
+
+        hasJoinedLobby = true;
+        roomCodeInputEl.value = roomCode;
+        playerNameEl.value = playerName;
+        joinRoomCodeEl.value = roomCode;
+        joinPlayerNameEl.value = playerName;
+        localStorage.setItem("doomdada_room_code_v1", roomCode);
+        localStorage.setItem("doomdada_player_name_v1", playerName);
+
+        const stats = data && data.stats ? data.stats : null;
+        const players = stats && typeof stats.players === "number" ? stats.players : "-";
+        const spectators = stats && typeof stats.spectators === "number" ? stats.spectators : "-";
+        lobbyJoinStatusEl.textContent = `Lobby joined: ${roomCode} | Player: ${playerName} | Players: ${players} | Spectators: ${spectators}`;
+
+        joinModalEl.classList.add("hidden");
+        renderPerformanceBoard();
+        await syncPlayerSession();
+        if (!levelsLoaded) {
+          levelsLoaded = true;
+          await loadLevels();
+        }
+        setAnswerStatus(`Joined lobby ${roomCode}. Pick a challenge to begin.`);
+      } catch {
+        setJoinStatus("Network error while joining lobby.", true);
+      } finally {
+        joinLobbyBtn.disabled = false;
+      }
+    }
+
     async function syncPlayerSession() {
+      if (!hasJoinedLobby) {
+        return;
+      }
       const playerName = (playerNameEl.value || "Presenter").trim() || "Presenter";
       const roomCode = currentRoomCode();
       try {
@@ -1709,6 +1882,9 @@ Console: waiting for input</div>
     }
 
     async function loadLevels() {
+      if (!hasJoinedLobby) {
+        return;
+      }
       try {
         const res = await fetch(apiUrl("/api/game/levels"));
         if (!res.ok) {
@@ -1783,13 +1959,35 @@ Console: waiting for input</div>
     btnStory.addEventListener("click", () => { missionBriefEl.textContent = infoBriefs.story; });
     btnResetProgress.addEventListener("click", resetProgress);
     playerNameEl.addEventListener("input", () => {
+      localStorage.setItem("doomdada_player_name_v1", (playerNameEl.value || "").trim());
+      joinPlayerNameEl.value = playerNameEl.value;
       renderPerformanceBoard();
       syncPlayerSession();
     });
     roomCodeInputEl.addEventListener("input", () => {
       roomCodeInputEl.value = (roomCodeInputEl.value || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8);
+      joinRoomCodeEl.value = roomCodeInputEl.value;
       localStorage.setItem("doomdada_room_code_v1", roomCodeInputEl.value);
       syncPlayerSession();
+    });
+    joinRoomCodeEl.addEventListener("input", () => {
+      joinRoomCodeEl.value = (joinRoomCodeEl.value || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8);
+      roomCodeInputEl.value = joinRoomCodeEl.value;
+    });
+    joinPlayerNameEl.addEventListener("input", () => {
+      joinPlayerNameEl.value = (joinPlayerNameEl.value || "").slice(0, 40);
+      playerNameEl.value = joinPlayerNameEl.value;
+    });
+    joinLobbyBtn.addEventListener("click", joinLobby);
+    joinRoomCodeEl.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        joinLobby();
+      }
+    });
+    joinPlayerNameEl.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        joinLobby();
+      }
     });
     closeModalBtn.addEventListener("click", closePlayModal);
     dismissOnboardBtn.addEventListener("click", () => {
@@ -1827,7 +2025,12 @@ Console: waiting for input</div>
     renderSolvedBoard();
     renderPerformanceBoard();
     updateChallengeProgress();
-    loadLevels();
+    if (savedRoomCode && savedPlayerName) {
+      joinLobby();
+    } else {
+      joinModalEl.classList.remove("hidden");
+      setJoinStatus("Waiting for room code and player name.", false);
+    }
     setInterval(syncPlayerSession, 30000);
   </script>
 </body>
