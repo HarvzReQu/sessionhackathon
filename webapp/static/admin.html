@@ -71,6 +71,11 @@
       cursor: pointer;
     }
     button:hover { filter: brightness(1.08); }
+    .subtle-btn {
+      border: 1px solid #36526b;
+      background: #0b1724;
+      padding: 10px 12px;
+    }
     .status {
       margin-top: 12px;
       border: 1px solid #2d4457;
@@ -78,6 +83,29 @@
       background: #0a141f;
       padding: 12px;
       color: var(--muted);
+    }
+    .toast {
+      position: fixed;
+      right: 18px;
+      top: 16px;
+      z-index: 9999;
+      border: 1px solid #4d6f2f;
+      border-radius: 10px;
+      background: linear-gradient(120deg, #172514, #101d13);
+      color: #d9f99d;
+      padding: 10px 12px;
+      max-width: 320px;
+      box-shadow: 0 8px 26px rgba(0, 0, 0, 0.35);
+      font-size: 0.9rem;
+    }
+    .toast.hidden {
+      display: none;
+    }
+    .export-meta {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 0.86rem;
+      line-height: 1.35;
     }
     .metrics {
       display: grid;
@@ -93,6 +121,7 @@
     }
     .waiting { color: #facc15; }
     .live { color: #22c55e; }
+    .ended { color: #fb7185; }
     .metric span { color: var(--muted); font-size: 0.9rem; }
     .metric strong { display: block; margin-top: 6px; font-size: 1.3rem; color: var(--accent2); }
     table {
@@ -106,6 +135,18 @@
       text-align: left;
     }
     th { color: #c4b5fd; }
+    .sort-btn {
+      all: unset;
+      cursor: pointer;
+      color: #c4b5fd;
+      font-weight: 700;
+      font-size: 0.92rem;
+      line-height: 1;
+    }
+    .sort-btn:hover {
+      color: #e9d5ff;
+      text-decoration: underline;
+    }
     .mono { font-family: Consolas, "Courier New", monospace; letter-spacing: 1px; }
     .classroom-summary {
       display: grid;
@@ -251,9 +292,74 @@
       border-radius: 999px;
       flex: 0 0 auto;
     }
+    .analytics-summary {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .analytics-pill {
+      border: 1px solid #2d4457;
+      border-radius: 10px;
+      background: #0a141f;
+      padding: 10px;
+      text-align: center;
+    }
+    .analytics-pill span {
+      color: var(--muted);
+      font-size: 0.82rem;
+      display: block;
+      margin-bottom: 6px;
+    }
+    .analytics-pill strong {
+      font-size: 1rem;
+      color: #93c5fd;
+      line-height: 1.35;
+      display: block;
+      white-space: pre-wrap;
+    }
+    .analytics-table td {
+      vertical-align: top;
+    }
+    .final-results.hidden {
+      display: none;
+    }
+    .results-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .result-card {
+      border: 1px solid #2d4457;
+      border-radius: 10px;
+      background: #0a141f;
+      padding: 10px;
+    }
+    .result-card .title {
+      color: #e2e8f0;
+      font-weight: 700;
+      margin-bottom: 6px;
+      font-size: 0.9rem;
+    }
+    .result-card .meta {
+      color: #9fb0c0;
+      line-height: 1.4;
+      font-size: 0.84rem;
+      white-space: pre-wrap;
+    }
+    .risk-high td {
+      background: rgba(239, 68, 68, 0.08);
+    }
+    .risk-mid td {
+      background: rgba(245, 158, 11, 0.08);
+    }
+    .risk-low td {
+      background: rgba(34, 197, 94, 0.08);
+    }
     @media (max-width: 860px) {
       .metrics { grid-template-columns: repeat(2, 1fr); }
       .classroom-summary { grid-template-columns: repeat(2, 1fr); }
+      .analytics-summary { grid-template-columns: repeat(2, 1fr); }
       .podium { grid-template-columns: 1fr; }
       .trend-legend { grid-template-columns: 1fr 1fr; }
       .row { grid-template-columns: 1fr; }
@@ -277,11 +383,17 @@
         </div>
         <div class="actions">
           <button id="startGameBtn" disabled>Start Game</button>
+          <button id="stopGameBtn" class="subtle-btn" disabled>Stop Game</button>
           <button id="exportCsvBtn" disabled>Export CSV</button>
+          <button id="exportAnalyticsCsvBtn" disabled>Export Analytics CSV</button>
+          <button id="exportBundleZipBtn" disabled>Export Bundle ZIP</button>
         </div>
         <div id="status" class="status">No active lobby yet.</div>
+        <div id="exportMeta" class="export-meta">Last export: never</div>
       </div>
     </section>
+
+    <div id="joinRequestToast" class="toast hidden" role="status" aria-live="polite"></div>
 
     <section class="panel">
       <div class="head"><h2>Live Room Metrics</h2></div>
@@ -297,18 +409,50 @@
     </section>
 
     <section class="panel">
-      <div class="head"><h2>Participants</h2></div>
+      <div class="head" style="display:flex; justify-content:space-between; align-items:center;">
+        <h2>Participants</h2>
+        <span id="participantsBadge" style="font-size:0.82rem; color:#86efac; border:1px solid #1e5a2e; background:rgba(20,60,34,0.4); padding:3px 12px; border-radius:999px;">0 entered</span>
+      </div>
       <div class="body">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+          <span style="color:#9fb0c0; font-size:0.82rem;">Auto-refreshes with lobby data. All times are UTC.</span>
+          <span id="participantsRefreshedAt" style="color:#4a6880; font-size:0.78rem;">Last updated: —</span>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Name</th>
+              <th>Role</th>
+              <th>Team</th>
+              <th>Joined (UTC)</th>
+            </tr>
+          </thead>
+          <tbody id="visitorTable">
+            <tr><td colspan="5">No participants yet.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="head"><h2>Join Requests</h2></div>
+      <div class="body">
+        <div class="classroom-summary" style="margin-bottom:8px;">
+          <div class="pill"><span>Pending Requests</span><strong id="pendingJoinRequests">0</strong></div>
+        </div>
         <table>
           <thead>
             <tr>
               <th>Name</th>
               <th>Role</th>
-              <th>Joined (UTC)</th>
+              <th>Requested (UTC)</th>
+              <th>Status</th>
+              <th>Action</th>
             </tr>
           </thead>
-          <tbody id="visitorTable">
-            <tr><td colspan="3">No participants yet.</td></tr>
+          <tbody id="joinRequestTable">
+            <tr><td colspan="5">No join requests yet.</td></tr>
           </tbody>
         </table>
       </div>
@@ -328,6 +472,43 @@
           <div class="podium-card silver"><span class="place">2nd - Silver</span><div class="name">Waiting...</div><div class="meta">No data yet.</div></div>
           <div class="podium-card bronze"><span class="place">3rd - Bronze</span><div class="name">Waiting...</div><div class="meta">No data yet.</div></div>
         </div>
+        <div class="trend-wrap" style="margin-bottom:12px;">
+          <div class="trend-head">
+            <strong>Leaderboard (4th and beyond)</strong>
+            <span>Ranks not shown on podium</span>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Rank</th>
+                <th>Player</th>
+                <th>Team</th>
+                <th><button type="button" id="sortScoreBtn" class="sort-btn" data-sort="score">Score</button></th>
+                <th><button type="button" id="sortSolvedBtn" class="sort-btn" data-sort="solved_count">Solved</button></th>
+                <th><button type="button" id="sortAccuracyBtn" class="sort-btn" data-sort="accuracy">Accuracy</button></th>
+                <th>Current Challenge</th>
+                <th>Time Interval</th>
+                <th><button type="button" id="sortActivityBtn" class="sort-btn" data-sort="last_activity">Last Activity (UTC)</button></th>
+              </tr>
+            </thead>
+            <tbody id="classroomTable">
+              <tr><td colspan="8">Waiting for rank 4 and below.</td></tr>
+            </tbody>
+          </table>
+          <div class="actions" style="margin-top:8px; align-items:center;">
+            <input id="classroomSearch" type="text" placeholder="Search player or challenge" style="max-width:220px;" />
+            <button id="classroomSearchClearBtn" class="subtle-btn" type="button">Clear</button>
+            <label for="classroomPageSize" style="color:#9fb0c0; font-size:0.86rem;">Rows per page</label>
+            <select id="classroomPageSize" style="max-width:84px;">
+              <option value="10" selected>10</option>
+              <option value="25">25</option>
+              <option value="50">50</option>
+            </select>
+            <button id="classroomPrevBtn" disabled>Previous</button>
+            <button id="classroomNextBtn" disabled>Next</button>
+            <span id="classroomPageInfo" style="color:#9fb0c0; font-size:0.86rem;">Page 1/1</span>
+          </div>
+        </div>
         <div class="trend-wrap">
           <div class="trend-head">
             <strong>Live Top-5 Score Trend</strong>
@@ -336,21 +517,85 @@
           <svg id="trendChart" class="trend-chart" viewBox="0 0 720 230" preserveAspectRatio="none" role="img" aria-label="Top 5 score trend chart"></svg>
           <div id="trendLegend" class="trend-legend"></div>
         </div>
-        <table>
+      </div>
+    </section>
+
+    <section id="finalResultsPanel" class="panel final-results hidden">
+      <div class="head"><h2>Final Results Leaderboard</h2></div>
+      <div class="body">
+        <div class="classroom-summary" style="margin-bottom:10px;">
+          <div class="pill"><span>Room</span><strong id="finalRoomCode">-</strong></div>
+          <div class="pill"><span>Status</span><strong id="finalStatus">ENDED</strong></div>
+          <div class="pill"><span>Players</span><strong id="finalPlayersCount">0</strong></div>
+          <div class="pill"><span>Updated At</span><strong id="finalUpdatedAt">-</strong></div>
+        </div>
+        <div id="finalPodium" class="podium">
+          <div class="podium-card gold"><span class="place">1st - Gold</span><div class="name">Waiting...</div><div class="meta">No data yet.</div></div>
+          <div class="podium-card silver"><span class="place">2nd - Silver</span><div class="name">Waiting...</div><div class="meta">No data yet.</div></div>
+          <div class="podium-card bronze"><span class="place">3rd - Bronze</span><div class="name">Waiting...</div><div class="meta">No data yet.</div></div>
+        </div>
+        <div class="trend-wrap" style="margin-top:8px;">
+          <div class="trend-head">
+            <strong>4th Place and Beyond</strong>
+            <span>Card grid list</span>
+          </div>
+          <div id="finalGrid" class="results-grid"></div>
+        </div>
+        <div class="trend-wrap" style="margin-top:8px;">
+          <div class="trend-head">
+            <strong>Post-Game Report</strong>
+            <span>Auto-generated classroom recap</span>
+          </div>
+          <div class="classroom-summary" style="margin-bottom:8px;">
+            <div class="pill"><span>Avg Score</span><strong id="reportAvgScore">0</strong></div>
+            <div class="pill"><span>Avg Accuracy</span><strong id="reportAvgAccuracy">0%</strong></div>
+            <div class="pill"><span>Avg Completion</span><strong id="reportAvgCompletion">0%</strong></div>
+            <div class="pill"><span>Total Solves</span><strong id="reportTotalSolves">0</strong></div>
+          </div>
+          <div id="reportHighlights" class="status">Report highlights will appear once generated.</div>
+          <table style="margin-top:8px;">
+            <thead>
+              <tr>
+                <th>Rank</th>
+                <th>Player</th>
+                <th>Score</th>
+                <th>Solved</th>
+                <th>Accuracy</th>
+                <th>Best Streak</th>
+              </tr>
+            </thead>
+            <tbody id="reportTopPlayersTable">
+              <tr><td colspan="6">No report yet.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="head"><h2>Level Balance Analytics</h2></div>
+      <div class="body">
+        <div class="analytics-summary">
+          <div class="analytics-pill"><span>Hardest Level</span><strong id="hardestLevel">-</strong></div>
+          <div class="analytics-pill"><span>Slowest Level</span><strong id="slowestLevel">-</strong></div>
+          <div class="analytics-pill"><span>Balanced Levels</span><strong id="balancedCount">0</strong></div>
+          <div class="analytics-pill"><span>Updated At</span><strong id="analyticsUpdatedAt">-</strong></div>
+        </div>
+        <table class="analytics-table">
           <thead>
             <tr>
-              <th>Rank</th>
-              <th>Player</th>
-              <th>Score</th>
-              <th>Solved</th>
-              <th>Accuracy</th>
-              <th>Current Challenge</th>
-              <th>Time Interval</th>
-              <th>Last Activity (UTC)</th>
+              <th>Level</th>
+              <th>Tier</th>
+              <th>Submissions</th>
+              <th>Fail Rate</th>
+              <th>Avg Solve (s)</th>
+              <th>Target (s)</th>
+              <th>Pace Delta (s)</th>
+              <th>Recommendation</th>
             </tr>
           </thead>
-          <tbody id="classroomTable">
-            <tr><td colspan="8">No classroom activity yet.</td></tr>
+          <tbody id="analyticsTable">
+            <tr><td colspan="8">No analytics yet.</td></tr>
           </tbody>
         </table>
       </div>
@@ -361,27 +606,68 @@
     const adminNameInput = document.getElementById("adminName");
     const createLobbyBtn = document.getElementById("createLobbyBtn");
     const startGameBtn = document.getElementById("startGameBtn");
+    const stopGameBtn = document.getElementById("stopGameBtn");
     const exportCsvBtn = document.getElementById("exportCsvBtn");
+    const exportAnalyticsCsvBtn = document.getElementById("exportAnalyticsCsvBtn");
+    const exportBundleZipBtn = document.getElementById("exportBundleZipBtn");
     const statusEl = document.getElementById("status");
+    const joinRequestToastEl = document.getElementById("joinRequestToast");
+    const exportMetaEl = document.getElementById("exportMeta");
     const roomCodeEl = document.getElementById("roomCode");
     const lobbyStatusEl = document.getElementById("lobbyStatus");
     const totalVisitorsEl = document.getElementById("totalVisitors");
     const playersEl = document.getElementById("players");
     const spectatorsEl = document.getElementById("spectators");
     const visitorTableEl = document.getElementById("visitorTable");
+    const pendingJoinRequestsEl = document.getElementById("pendingJoinRequests");
+    const joinRequestTableEl = document.getElementById("joinRequestTable");
     const activePlayersEl = document.getElementById("activePlayers");
     const totalSubmissionsEl = document.getElementById("totalSubmissions");
     const totalSolvesEl = document.getElementById("totalSolves");
     const classroomUpdatedAtEl = document.getElementById("classroomUpdatedAt");
     const classroomTableEl = document.getElementById("classroomTable");
+    const classroomSearchEl = document.getElementById("classroomSearch");
+    const classroomSearchClearBtn = document.getElementById("classroomSearchClearBtn");
+    const classroomPageSizeEl = document.getElementById("classroomPageSize");
+    const classroomSortBtnEls = Array.from(document.querySelectorAll(".sort-btn[data-sort]"));
+    const classroomPrevBtn = document.getElementById("classroomPrevBtn");
+    const classroomNextBtn = document.getElementById("classroomNextBtn");
+    const classroomPageInfoEl = document.getElementById("classroomPageInfo");
     const podiumEl = document.getElementById("podium");
     const trendChartEl = document.getElementById("trendChart");
     const trendLegendEl = document.getElementById("trendLegend");
+    const hardestLevelEl = document.getElementById("hardestLevel");
+    const slowestLevelEl = document.getElementById("slowestLevel");
+    const balancedCountEl = document.getElementById("balancedCount");
+    const analyticsUpdatedAtEl = document.getElementById("analyticsUpdatedAt");
+    const analyticsTableEl = document.getElementById("analyticsTable");
+    const finalResultsPanelEl = document.getElementById("finalResultsPanel");
+    const finalRoomCodeEl = document.getElementById("finalRoomCode");
+    const finalStatusEl = document.getElementById("finalStatus");
+    const finalPlayersCountEl = document.getElementById("finalPlayersCount");
+    const finalUpdatedAtEl = document.getElementById("finalUpdatedAt");
+    const finalPodiumEl = document.getElementById("finalPodium");
+    const finalGridEl = document.getElementById("finalGrid");
+    const reportAvgScoreEl = document.getElementById("reportAvgScore");
+    const reportAvgAccuracyEl = document.getElementById("reportAvgAccuracy");
+    const reportAvgCompletionEl = document.getElementById("reportAvgCompletion");
+    const reportTotalSolvesEl = document.getElementById("reportTotalSolves");
+    const reportHighlightsEl = document.getElementById("reportHighlights");
+    const reportTopPlayersTableEl = document.getElementById("reportTopPlayersTable");
     const API_BASE = window.location.protocol === "file:" ? "http://127.0.0.1:8000" : "";
 
     const trendPalette = ["#facc15", "#e2e8f0", "#fb923c", "#60a5fa", "#34d399"];
     const scoreHistory = new Map();
+    const CLASSROOM_PAGE_SIZE_DEFAULT = 10;
     let trendTick = 0;
+    let classroomPage = 1;
+    let classroomPageSize = CLASSROOM_PAGE_SIZE_DEFAULT;
+    let classroomSearch = "";
+    let classroomSortKey = "score";
+    let classroomSortDir = "desc";
+    let latestClassroomPlayers = [];
+    let lastPendingJoinRequestCount = -1;
+    let joinToastTimerId = null;
 
     let roomCode = "";
     let adminToken = "";
@@ -406,18 +692,124 @@
       statusEl.textContent = text;
     }
 
-    function paintTable(visitors) {
-      if (!visitors.length) {
-        visitorTableEl.innerHTML = '<tr><td colspan="3">No participants yet.</td></tr>';
+    function showJoinRequestToast(text) {
+      if (!joinRequestToastEl) {
         return;
       }
-      visitorTableEl.innerHTML = visitors.map(v => `
-        <tr>
-          <td>${v.name}</td>
-          <td>${v.role}</td>
-          <td>${v.joined_at}</td>
-        </tr>
-      `).join("");
+      joinRequestToastEl.textContent = text;
+      joinRequestToastEl.classList.remove("hidden");
+      if (joinToastTimerId) {
+        clearTimeout(joinToastTimerId);
+      }
+      joinToastTimerId = setTimeout(() => {
+        joinRequestToastEl.classList.add("hidden");
+      }, 5000);
+    }
+
+    function exportMetaKey(currentRoomCode) {
+      const normalized = (currentRoomCode || "").trim().toUpperCase();
+      return normalized ? `doomdada_admin_last_export_${normalized}` : "doomdada_admin_last_export_default";
+    }
+
+    function tablePrefsKey(currentRoomCode) {
+      const normalized = (currentRoomCode || "").trim().toUpperCase();
+      return normalized ? `doomdada_admin_table_prefs_${normalized}` : "doomdada_admin_table_prefs_default";
+    }
+
+    function saveTablePrefs() {
+      const payload = {
+        classroomSortKey,
+        classroomSortDir,
+        classroomPageSize,
+        classroomSearch,
+      };
+      try {
+        localStorage.setItem(tablePrefsKey(roomCode), JSON.stringify(payload));
+      } catch {
+      }
+    }
+
+    function loadTablePrefs(currentRoomCode) {
+      const defaultPrefs = {
+        classroomSortKey: "score",
+        classroomSortDir: "desc",
+        classroomPageSize: CLASSROOM_PAGE_SIZE_DEFAULT,
+        classroomSearch: "",
+      };
+
+      let prefs = defaultPrefs;
+      try {
+        const raw = localStorage.getItem(tablePrefsKey(currentRoomCode));
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          prefs = { ...defaultPrefs, ...parsed };
+        }
+      } catch {
+      }
+
+      const allowedSortKeys = new Set(["score", "solved_count", "accuracy", "last_activity"]);
+      classroomSortKey = allowedSortKeys.has(prefs.classroomSortKey) ? prefs.classroomSortKey : defaultPrefs.classroomSortKey;
+      classroomSortDir = prefs.classroomSortDir === "asc" ? "asc" : "desc";
+
+      const parsedPageSize = Number.parseInt(String(prefs.classroomPageSize), 10);
+      classroomPageSize = Number.isFinite(parsedPageSize) && parsedPageSize > 0
+        ? parsedPageSize
+        : CLASSROOM_PAGE_SIZE_DEFAULT;
+
+      classroomSearch = String(prefs.classroomSearch || "");
+
+      classroomPageSizeEl.value = String(classroomPageSize);
+      if (classroomPageSizeEl.value !== String(classroomPageSize)) {
+        classroomPageSize = CLASSROOM_PAGE_SIZE_DEFAULT;
+        classroomPageSizeEl.value = String(CLASSROOM_PAGE_SIZE_DEFAULT);
+      }
+      classroomSearchEl.value = classroomSearch;
+      updateSortButtons();
+    }
+
+    function loadExportMeta(currentRoomCode) {
+      try {
+        const saved = localStorage.getItem(exportMetaKey(currentRoomCode));
+        exportMetaEl.textContent = saved || "Last export: never";
+      } catch {
+        exportMetaEl.textContent = "Last export: never";
+      }
+    }
+
+    function markExport(kind) {
+      const stamp = new Date().toISOString().replace("T", " ").replace(".000Z", "Z");
+      const text = `Last export: ${kind} at ${stamp}`;
+      exportMetaEl.textContent = text;
+      try {
+        localStorage.setItem(exportMetaKey(roomCode), text);
+      } catch {
+      }
+    }
+
+    function paintTable(visitors) {
+      const badgeEl = document.getElementById("participantsBadge");
+      const refreshedEl = document.getElementById("participantsRefreshedAt");
+      if (badgeEl) badgeEl.textContent = `${visitors.length} entered`;
+      if (refreshedEl) refreshedEl.textContent = `Last updated: ${new Date().toISOString().replace("T"," ").slice(0,19)} UTC`;
+      if (!visitors.length) {
+        visitorTableEl.innerHTML = '<tr><td colspan="5">No participants yet.</td></tr>';
+        return;
+      }
+      visitorTableEl.innerHTML = visitors.map((v, idx) => {
+        const roleStyle = v.role === "player"
+          ? "color:#86efac;"
+          : "color:#93c5fd;";
+        const team = v.team ? `<span style="border:1px solid #2a4a6a;background:rgba(10,25,45,0.6);padding:2px 8px;font-size:0.78rem;border-radius:999px;">${v.team}</span>` : '<span style="color:#4a6880;">—</span>';
+        return `
+          <tr>
+            <td style="color:#4a6880;">${idx + 1}</td>
+            <td style="font-weight:700;">${v.name}</td>
+            <td style="${roleStyle}">${String(v.role).toUpperCase()}</td>
+            <td>${team}</td>
+            <td style="color:#6a8a9a; font-size:0.84rem;">${v.joined_at}</td>
+          </tr>
+        `;
+      }).join("");
     }
 
     function paintStats(data) {
@@ -425,25 +817,173 @@
       lobbyStatusEl.textContent = data.lobby_status.toUpperCase();
       lobbyStatusEl.classList.toggle("waiting", data.lobby_status === "waiting");
       lobbyStatusEl.classList.toggle("live", data.lobby_status === "live");
+      lobbyStatusEl.classList.toggle("ended", data.lobby_status === "ended");
       totalVisitorsEl.textContent = data.total_visitors;
       playersEl.textContent = data.players;
       spectatorsEl.textContent = data.spectators;
+      pendingJoinRequestsEl.textContent = String(data.pending_join_requests || 0);
       paintTable(Array.isArray(data.visitors) ? data.visitors : []);
-      startGameBtn.disabled = data.lobby_status === "live";
+      startGameBtn.disabled = data.lobby_status !== "waiting";
+      stopGameBtn.disabled = data.lobby_status !== "live";
+      finalResultsPanelEl.classList.toggle("hidden", data.lobby_status !== "ended");
+    }
+
+    function paintJoinRequests(requests) {
+      if (!requests.length) {
+        joinRequestTableEl.innerHTML = '<tr><td colspan="5">No join requests yet.</td></tr>';
+        return;
+      }
+
+      joinRequestTableEl.innerHTML = requests.map((req) => {
+        const status = String(req.status || "pending").toLowerCase();
+        const canAct = status === "pending";
+        const actionHtml = canAct
+          ? `<button class="subtle-btn" data-join-action="approve" data-request-id="${req.request_id}">Approve</button> <button class="subtle-btn" data-join-action="deny" data-request-id="${req.request_id}">Deny</button>`
+          : "-";
+
+        return `
+          <tr>
+            <td>${req.name}</td>
+            <td>${String(req.role || "-").toUpperCase()}</td>
+            <td>${req.requested_at || "-"}</td>
+            <td>${String(req.status || "-").toUpperCase()}</td>
+            <td>${actionHtml}</td>
+          </tr>
+        `;
+      }).join("");
+    }
+
+    async function refreshJoinRequests() {
+      if (!roomCode || !adminToken) {
+        return;
+      }
+      try {
+        const res = await fetch(apiUrl(`/api/lobby/${encodeURIComponent(roomCode)}/join-requests?token=${encodeURIComponent(adminToken)}`));
+        if (!res.ok) {
+          return;
+        }
+        const requests = await res.json();
+        const rows = Array.isArray(requests) ? requests : [];
+        paintJoinRequests(rows);
+
+        const pendingCount = rows.filter((item) => String(item.status || "").toLowerCase() === "pending").length;
+        if (lastPendingJoinRequestCount >= 0 && pendingCount > lastPendingJoinRequestCount) {
+          const delta = pendingCount - lastPendingJoinRequestCount;
+          showJoinRequestToast(`${delta} new join request${delta === 1 ? "" : "s"} waiting for approval.`);
+        }
+        lastPendingJoinRequestCount = pendingCount;
+      } catch {
+      }
+    }
+
+    async function decideJoinRequest(requestId, approve) {
+      if (!roomCode || !adminToken || !requestId) {
+        return;
+      }
+
+      const action = approve ? "approve" : "deny";
+      try {
+        const res = await fetch(apiUrl(`/api/lobby/${encodeURIComponent(roomCode)}/join-requests/${encodeURIComponent(requestId)}/${action}?token=${encodeURIComponent(adminToken)}`), {
+          method: "POST"
+        });
+        if (!res.ok) {
+          const data = await readJsonSafe(res);
+          setStatus((data && data.detail) || `Could not ${action} join request.`);
+          return;
+        }
+        setStatus(`Join request ${action}d.`);
+        refreshAdminStats();
+        refreshJoinRequests();
+      } catch {
+        setStatus(`Network error while attempting to ${action} join request.`);
+      }
+    }
+
+    function sortLabel(key) {
+      if (key === "score") {
+        return "Score";
+      }
+      if (key === "solved_count") {
+        return "Solved";
+      }
+      if (key === "accuracy") {
+        return "Accuracy";
+      }
+      if (key === "last_activity") {
+        return "Last Activity (UTC)";
+      }
+      return key;
+    }
+
+    function updateSortButtons() {
+      classroomSortBtnEls.forEach((btn) => {
+        const key = btn.dataset.sort || "";
+        const active = key === classroomSortKey;
+        const icon = active ? (classroomSortDir === "asc" ? " ^" : " v") : "";
+        btn.textContent = `${sortLabel(key)}${icon}`;
+      });
+    }
+
+    function sortedClassroomRows(rows) {
+      const out = [...rows];
+      out.sort((a, b) => {
+        let av = 0;
+        let bv = 0;
+
+        if (classroomSortKey === "last_activity") {
+          av = Date.parse(a.last_activity || "") || 0;
+          bv = Date.parse(b.last_activity || "") || 0;
+        } else {
+          av = Number(a[classroomSortKey] || 0);
+          bv = Number(b[classroomSortKey] || 0);
+        }
+
+        if (av === bv) {
+          return a._restRank - b._restRank;
+        }
+        if (classroomSortDir === "asc") {
+          return av - bv;
+        }
+        return bv - av;
+      });
+      return out;
     }
 
     function paintClassroomTable(players) {
-      if (!players.length) {
-        classroomTableEl.innerHTML = '<tr><td colspan="8">No classroom activity yet.</td></tr>';
+      latestClassroomPlayers = players;
+      const query = classroomSearch.trim().toLowerCase();
+      const rest = players.slice(3).map((p, idx) => ({ ...p, _restRank: idx + 4 })).filter((p) => {
+        if (!query) {
+          return true;
+        }
+        const name = String(p.player_name || "").toLowerCase();
+        const level = String(p.last_level_id || "").toLowerCase();
+        return name.includes(query) || level.includes(query);
+      });
+      const sortedRows = sortedClassroomRows(rest);
+      const totalPages = Math.max(1, Math.ceil(sortedRows.length / classroomPageSize));
+      if (classroomPage > totalPages) {
+        classroomPage = totalPages;
+      }
+      if (!sortedRows.length) {
+        classroomTableEl.innerHTML = query
+          ? '<tr><td colspan="8">No matches for current search.</td></tr>'
+          : '<tr><td colspan="8">Waiting for rank 4 and below.</td></tr>';
+        classroomPrevBtn.disabled = true;
+        classroomNextBtn.disabled = true;
+        classroomPageInfoEl.textContent = "Page 1/1 | Showing 0-0 of 0";
         return;
       }
-      classroomTableEl.innerHTML = players.map((p, idx) => {
-        const rank = idx + 1;
-        const rowClass = rank === 1 ? "rank-1" : rank === 2 ? "rank-2" : rank === 3 ? "rank-3" : "rank-rest";
+      const start = (classroomPage - 1) * classroomPageSize;
+      const pageRows = sortedRows.slice(start, start + classroomPageSize);
+      classroomTableEl.innerHTML = pageRows.map((p) => {
+        const rank = p._restRank;
+        const rowClass = "rank-rest";
         return `
         <tr class="${rowClass}">
-          <td>${rank <= 3 ? (rank === 1 ? "GOLD" : rank === 2 ? "SILVER" : "BRONZE") : `<span class="rank-rest">#${rank}</span>`}</td>
+          <td><span class="rank-rest">#${rank}</span></td>
           <td>${p.player_name}</td>
+          <td>${p.team || "-"}</td>
           <td>${p.score}</td>
           <td>${p.solved_count}</td>
           <td>${p.accuracy}% (${p.correct_submissions}/${p.total_submissions})</td>
@@ -453,6 +993,57 @@
         </tr>
       `;
       }).join("");
+    // --- TEAM LEADERBOARD ---
+    const teamLeaderboardPanel = document.createElement("section");
+    teamLeaderboardPanel.className = "panel team-leaderboard";
+    teamLeaderboardPanel.innerHTML = `
+      <div class="head"><h2>Team Leaderboard</h2></div>
+      <div class="body">
+        <table style="width:100%;margin-bottom:8px;">
+          <thead>
+            <tr><th>Rank</th><th>Team</th><th>Score</th><th>Solves</th><th>Members</th></tr>
+          </thead>
+          <tbody id="teamLeaderboardTable"><tr><td colspan="5">Loading...</td></tr></tbody>
+        </table>
+      </div>
+    `;
+    document.body.insertBefore(teamLeaderboardPanel, document.body.firstChild.nextSibling);
+
+    async function refreshTeamLeaderboard() {
+      if (!roomCode) return;
+      const table = document.getElementById("teamLeaderboardTable");
+      table.innerHTML = '<tr><td colspan="5">Loading...</td></tr>';
+      try {
+        const res = await fetch(apiUrl(`/api/game/classroom/team-leaderboard?room_code=${encodeURIComponent(roomCode)}`));
+        if (!res.ok) {
+          table.innerHTML = '<tr><td colspan="5">Failed to load team leaderboard.</td></tr>';
+          return;
+        }
+        const teams = await res.json();
+        if (!teams.length) {
+          table.innerHTML = '<tr><td colspan="5">No teams found.</td></tr>';
+          return;
+        }
+        table.innerHTML = teams.map((t) => `
+          <tr>
+            <td>#${t.rank}</td>
+            <td>${t.team}</td>
+            <td>${t.score}</td>
+            <td>${t.solves}</td>
+            <td>${Array.isArray(t.members) ? t.members.join(", ") : "-"}</td>
+          </tr>
+        `).join("");
+      } catch {
+        table.innerHTML = '<tr><td colspan="5">Network error.</td></tr>';
+      }
+    }
+
+    setInterval(refreshTeamLeaderboard, 8000);
+    refreshTeamLeaderboard();
+
+      classroomPrevBtn.disabled = classroomPage <= 1;
+      classroomNextBtn.disabled = classroomPage >= totalPages;
+      classroomPageInfoEl.textContent = `Page ${classroomPage}/${totalPages} | Showing ${start + 1}-${start + pageRows.length} of ${sortedRows.length}`;
     }
 
     function formatInterval(lastActivityIso) {
@@ -486,6 +1077,99 @@
         }
         return `<div class="podium-card ${slot.cls}"><span class="place">${slot.label}</span><div class="name">${p.player_name}</div><div class="meta">Score: ${p.score}\nSolved: ${p.solved_count}\nCurrent: ${(p.last_level_id || "-").toString().toUpperCase()}\nInterval: ${formatInterval(p.last_activity)}</div></div>`;
       }).join("");
+    }
+
+    function paintFinalPodium(players) {
+      const places = [
+        { cls: "gold", label: "1st - Gold" },
+        { cls: "silver", label: "2nd - Silver" },
+        { cls: "bronze", label: "3rd - Bronze" },
+      ];
+
+      finalPodiumEl.innerHTML = places.map((slot, idx) => {
+        const p = players[idx];
+        if (!p) {
+          return `<div class="podium-card ${slot.cls}"><span class="place">${slot.label}</span><div class="name">Waiting...</div><div class="meta">No player in this slot yet.</div></div>`;
+        }
+        return `<div class="podium-card ${slot.cls}"><span class="place">${slot.label}</span><div class="name">${p.player_name}</div><div class="meta">Score: ${p.score}\nSolved: ${p.solved_count}\nAccuracy: ${p.accuracy}%\nStreak: ${p.current_streak} (best ${p.best_streak})\nSubmissions: ${p.correct_submissions}/${p.total_submissions}</div></div>`;
+      }).join("");
+    }
+
+    function paintFinalGrid(players) {
+      const rest = players.slice(3);
+      if (!rest.length) {
+        finalGridEl.innerHTML = '<div class="result-card"><div class="meta">No players beyond podium.</div></div>';
+        return;
+      }
+      finalGridEl.innerHTML = rest.map((p, idx) => {
+        const rank = idx + 4;
+        return `
+          <article class="result-card">
+            <div class="title">#${rank} ${p.player_name}</div>
+            <div class="meta">Score: ${p.score}\nSolved: ${p.solved_count}\nAccuracy: ${p.accuracy}%\nStreak: ${p.current_streak} (best ${p.best_streak})\nSubmissions: ${p.correct_submissions}/${p.total_submissions}\nLast Activity: ${p.last_activity || "-"}</div>
+          </article>
+        `;
+      }).join("");
+    }
+
+    function paintFinalResults(players, updatedAt) {
+      finalRoomCodeEl.textContent = roomCode || "-";
+      finalStatusEl.textContent = "ENDED";
+      finalPlayersCountEl.textContent = String(players.length || 0);
+      finalUpdatedAtEl.textContent = updatedAt || "-";
+      paintFinalPodium(players);
+      paintFinalGrid(players);
+    }
+
+    function paintSessionReport(report) {
+      reportAvgScoreEl.textContent = String(report.average_score || 0);
+      reportAvgAccuracyEl.textContent = `${report.average_accuracy || 0}%`;
+      reportAvgCompletionEl.textContent = `${report.average_completion_percent || 0}%`;
+      reportTotalSolvesEl.textContent = String(report.total_solves || 0);
+
+      const highlights = Array.isArray(report.highlights) ? report.highlights : [];
+      reportHighlightsEl.textContent = highlights.length ? highlights.join("\n") : "No report highlights yet.";
+
+      const top = Array.isArray(report.top_performers) ? report.top_performers : [];
+      if (!top.length) {
+        reportTopPlayersTableEl.innerHTML = '<tr><td colspan="6">No top performers yet.</td></tr>';
+        return;
+      }
+
+      reportTopPlayersTableEl.innerHTML = top.map((p) => `
+        <tr>
+          <td>#${p.rank}</td>
+          <td>${p.player_name}</td>
+          <td>${p.score}</td>
+          <td>${p.solved_count}</td>
+          <td>${p.accuracy}%</td>
+          <td>${p.best_streak}</td>
+        </tr>
+      `).join("");
+    }
+
+    async function refreshSessionReport() {
+      if (!roomCode || !adminToken) {
+        return;
+      }
+      try {
+        const res = await fetch(apiUrl(`/api/game/classroom/report?room_code=${encodeURIComponent(roomCode)}&token=${encodeURIComponent(adminToken)}`));
+        if (!res.ok) {
+          return;
+        }
+        const report = await res.json();
+        paintSessionReport(report);
+      } catch {
+      }
+    }
+
+    function revealFinalResults() {
+      finalResultsPanelEl.classList.remove("hidden");
+      try {
+        finalResultsPanelEl.scrollIntoView({ behavior: "smooth", block: "start" });
+      } catch {
+        finalResultsPanelEl.scrollIntoView();
+      }
     }
 
     function updateScoreHistory(players) {
@@ -567,6 +1251,50 @@
       `;
     }
 
+    function toRiskClass(item) {
+      if (item.fail_rate_percent >= 70 || (item.pace_delta_seconds != null && item.pace_delta_seconds > 35)) {
+        return "risk-high";
+      }
+      if (item.fail_rate_percent >= 45 || (item.pace_delta_seconds != null && item.pace_delta_seconds > 15)) {
+        return "risk-mid";
+      }
+      return "risk-low";
+    }
+
+    function paintAnalytics(items) {
+      if (!items.length) {
+        analyticsTableEl.innerHTML = '<tr><td colspan="8">No analytics yet.</td></tr>';
+        hardestLevelEl.textContent = "-";
+        slowestLevelEl.textContent = "-";
+        balancedCountEl.textContent = "0";
+        return;
+      }
+
+      const hardest = [...items].sort((a, b) => b.fail_rate_percent - a.fail_rate_percent)[0];
+      const withSolve = items.filter((x) => x.avg_solve_seconds != null);
+      const slowest = withSolve.length
+        ? [...withSolve].sort((a, b) => (b.avg_solve_seconds || 0) - (a.avg_solve_seconds || 0))[0]
+        : null;
+      const balanced = items.filter((x) => String(x.recommendation || "").toLowerCase().includes("balanced")).length;
+
+      hardestLevelEl.textContent = `${hardest.title}\n${hardest.fail_rate_percent}% fail`;
+      slowestLevelEl.textContent = slowest ? `${slowest.title}\n${slowest.avg_solve_seconds}s` : "-";
+      balancedCountEl.textContent = String(balanced);
+
+      analyticsTableEl.innerHTML = items.map((item) => `
+        <tr class="${toRiskClass(item)}">
+          <td>${item.title}</td>
+          <td>${String(item.difficulty_tier || "").toUpperCase()}</td>
+          <td>${item.total_submissions}</td>
+          <td>${item.fail_rate_percent}%</td>
+          <td>${item.avg_solve_seconds == null ? "-" : item.avg_solve_seconds}</td>
+          <td>${item.speed_target_seconds}</td>
+          <td>${item.pace_delta_seconds == null ? "-" : item.pace_delta_seconds}</td>
+          <td>${item.recommendation}</td>
+        </tr>
+      `).join("");
+    }
+
     async function refreshClassroomSummary() {
       if (!roomCode || !adminToken) {
         return;
@@ -582,10 +1310,32 @@
         activePlayersEl.textContent = String(data.active_players || 0);
         totalSubmissionsEl.textContent = String(data.total_submissions || 0);
         totalSolvesEl.textContent = String(data.total_solves || 0);
-        classroomUpdatedAtEl.textContent = (data.generated_at || "-").replace("T", " ").replace("+00:00", "Z");
+        const updatedAt = (data.generated_at || "-").replace("T", " ").replace("+00:00", "Z");
+        classroomUpdatedAtEl.textContent = updatedAt;
         paintPodium(players);
         paintTrendChart(players);
         paintClassroomTable(players);
+        if (!finalResultsPanelEl.classList.contains("hidden")) {
+          paintFinalResults(players, updatedAt);
+          refreshSessionReport();
+        }
+      } catch {
+      }
+    }
+
+    async function refreshClassroomAnalytics() {
+      if (!roomCode || !adminToken) {
+        return;
+      }
+      try {
+        const res = await fetch(apiUrl(`/api/game/classroom/analytics?room_code=${encodeURIComponent(roomCode)}&token=${encodeURIComponent(adminToken)}`));
+        if (!res.ok) {
+          return;
+        }
+        const data = await res.json();
+        const levels = Array.isArray(data.levels) ? data.levels : [];
+        analyticsUpdatedAtEl.textContent = (data.generated_at || "-").replace("T", " ").replace("+00:00", "Z");
+        paintAnalytics(levels);
       } catch {
       }
     }
@@ -633,10 +1383,19 @@
         adminToken = data.admin_token;
         roomCodeEl.textContent = roomCode;
         startGameBtn.disabled = false;
+        stopGameBtn.disabled = true;
         exportCsvBtn.disabled = false;
+        exportAnalyticsCsvBtn.disabled = false;
+        exportBundleZipBtn.disabled = false;
         setStatus(`Lobby created: ${roomCode}. Share this with students: doomdada.com (room code ${roomCode}).`);
+        loadExportMeta(roomCode);
+        loadTablePrefs(roomCode);
+        lastPendingJoinRequestCount = -1;
         refreshAdminStats();
+        refreshJoinRequests();
         refreshClassroomSummary();
+        refreshClassroomAnalytics();
+        refreshSessionReport();
       } catch (err) {
         setStatus(`Network error while creating lobby: ${err && err.message ? err.message : "request failed"}`);
       } finally {
@@ -668,9 +1427,43 @@
         if (data.stats) {
           paintStats(data.stats);
         }
+        refreshClassroomSummary();
       } catch (err) {
         setStatus(`Network error while starting game: ${err && err.message ? err.message : "request failed"}`);
         startGameBtn.disabled = false;
+      }
+    });
+
+    stopGameBtn.addEventListener("click", async () => {
+      if (!roomCode || !adminToken) {
+        setStatus("Create a lobby first.");
+        return;
+      }
+
+      stopGameBtn.disabled = true;
+      setStatus("Stopping game and freezing final leaderboard...");
+
+      try {
+        const res = await fetch(apiUrl(`/api/lobby/${roomCode}/stop?token=${encodeURIComponent(adminToken)}`), {
+          method: "POST"
+        });
+        const data = await readJsonSafe(res);
+        if (!res.ok) {
+          setStatus((data && data.detail) || `Could not stop game (HTTP ${res.status}).`);
+          stopGameBtn.disabled = false;
+          return;
+        }
+
+        setStatus(`Game stopped. Final results are now visible for room ${roomCode}.`);
+        if (data.stats) {
+          paintStats(data.stats);
+        }
+        revealFinalResults();
+        refreshClassroomSummary();
+        refreshSessionReport();
+      } catch (err) {
+        setStatus(`Network error while stopping game: ${err && err.message ? err.message : "request failed"}`);
+        stopGameBtn.disabled = false;
       }
     });
 
@@ -681,6 +1474,103 @@
       }
       const url = apiUrl(`/api/game/classroom/export.csv?room_code=${encodeURIComponent(roomCode)}&token=${encodeURIComponent(adminToken)}`);
       window.open(url, "_blank", "noopener,noreferrer");
+      markExport("Progress CSV");
+    });
+
+    exportAnalyticsCsvBtn.addEventListener("click", () => {
+      if (!roomCode || !adminToken) {
+        setStatus("Create a lobby first.");
+        return;
+      }
+      const url = apiUrl(`/api/game/classroom/analytics.csv?room_code=${encodeURIComponent(roomCode)}&token=${encodeURIComponent(adminToken)}`);
+      window.open(url, "_blank", "noopener,noreferrer");
+      markExport("Analytics CSV");
+    });
+
+    exportBundleZipBtn.addEventListener("click", () => {
+      if (!roomCode || !adminToken) {
+        setStatus("Create a lobby first.");
+        return;
+      }
+      const url = apiUrl(`/api/game/classroom/export_bundle.zip?room_code=${encodeURIComponent(roomCode)}&token=${encodeURIComponent(adminToken)}`);
+      window.open(url, "_blank", "noopener,noreferrer");
+      markExport("Bundle ZIP");
+    });
+
+    classroomPrevBtn.addEventListener("click", () => {
+      if (classroomPage <= 1) {
+        return;
+      }
+      classroomPage -= 1;
+      paintClassroomTable(latestClassroomPlayers);
+    });
+
+    classroomNextBtn.addEventListener("click", () => {
+      const restCount = Math.max(0, latestClassroomPlayers.length - 3);
+      const totalPages = Math.max(1, Math.ceil(restCount / classroomPageSize));
+      if (classroomPage >= totalPages) {
+        return;
+      }
+      classroomPage += 1;
+      paintClassroomTable(latestClassroomPlayers);
+    });
+
+    classroomPageSizeEl.addEventListener("change", () => {
+      const parsed = Number.parseInt(classroomPageSizeEl.value, 10);
+      classroomPageSize = Number.isFinite(parsed) && parsed > 0 ? parsed : CLASSROOM_PAGE_SIZE_DEFAULT;
+      classroomPage = 1;
+      saveTablePrefs();
+      paintClassroomTable(latestClassroomPlayers);
+    });
+
+    classroomSearchEl.addEventListener("input", () => {
+      classroomSearch = classroomSearchEl.value || "";
+      classroomPage = 1;
+      saveTablePrefs();
+      paintClassroomTable(latestClassroomPlayers);
+    });
+
+    classroomSearchEl.addEventListener("keydown", (event) => {
+      if (event.key !== "Escape") {
+        return;
+      }
+      if (!classroomSearchEl.value && !classroomSearch) {
+        return;
+      }
+      event.preventDefault();
+      classroomSearch = "";
+      classroomSearchEl.value = "";
+      classroomPage = 1;
+      saveTablePrefs();
+      paintClassroomTable(latestClassroomPlayers);
+    });
+
+    classroomSearchClearBtn.addEventListener("click", () => {
+      if (!classroomSearchEl.value && !classroomSearch) {
+        return;
+      }
+      classroomSearch = "";
+      classroomSearchEl.value = "";
+      classroomPage = 1;
+      saveTablePrefs();
+      paintClassroomTable(latestClassroomPlayers);
+      classroomSearchEl.focus();
+    });
+
+    classroomSortBtnEls.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const key = btn.dataset.sort || "score";
+        if (classroomSortKey === key) {
+          classroomSortDir = classroomSortDir === "asc" ? "desc" : "asc";
+        } else {
+          classroomSortKey = key;
+          classroomSortDir = "desc";
+        }
+        classroomPage = 1;
+        saveTablePrefs();
+        updateSortButtons();
+        paintClassroomTable(latestClassroomPlayers);
+      });
     });
 
     function hydrateFromQueryParams() {
@@ -697,17 +1587,48 @@
         adminToken = qpToken;
         roomCodeEl.textContent = roomCode;
         startGameBtn.disabled = false;
+        stopGameBtn.disabled = true;
         exportCsvBtn.disabled = false;
+        exportAnalyticsCsvBtn.disabled = false;
+        exportBundleZipBtn.disabled = false;
         setStatus(`Connected to room ${roomCode} via secure admin link.`);
+        loadExportMeta(roomCode);
+        loadTablePrefs(roomCode);
+        lastPendingJoinRequestCount = -1;
         refreshAdminStats();
+        refreshJoinRequests();
         refreshClassroomSummary();
+        refreshClassroomAnalytics();
+        refreshSessionReport();
       }
     }
 
+    loadTablePrefs("");
     hydrateFromQueryParams();
+    joinRequestTableEl.addEventListener("click", (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLElement)) {
+        return;
+      }
+      const action = target.getAttribute("data-join-action");
+      const requestId = target.getAttribute("data-request-id");
+      if (!action || !requestId) {
+        return;
+      }
+      decideJoinRequest(requestId, action === "approve");
+    });
+    if (!roomCode) {
+      loadExportMeta("");
+    }
     setInterval(refreshAdminStats, 2500);
+    setInterval(refreshJoinRequests, 2500);
     setInterval(refreshClassroomSummary, 3000);
+    setInterval(refreshClassroomAnalytics, 5000);
+    setInterval(refreshSessionReport, 7000);
+    refreshJoinRequests();
     refreshClassroomSummary();
+    refreshClassroomAnalytics();
+    refreshSessionReport();
   </script>
 </body>
 </html>

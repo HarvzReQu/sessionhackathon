@@ -804,6 +804,316 @@
         scroll-behavior: auto !important;
       }
     }
+
+    /* ── Welcome Screen ── */
+    #welcomeScreen {
+      position: fixed;
+      inset: 0;
+      z-index: 2000;
+      background: rgba(2, 5, 12, 0.88);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      transition: opacity 400ms ease;
+    }
+    #welcomeScreen.hidden { display: none; }
+    #welcomeScreen.fade-out { opacity: 0; pointer-events: none; }
+    #welcomeCanvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0.38;
+    }
+    .welcome-scan {
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(
+        180deg,
+        rgba(255,255,255,0.016) 0,
+        rgba(255,255,255,0.016) 1px,
+        transparent 1px,
+        transparent 4px);
+      pointer-events: none;
+      z-index: 1;
+    }
+    .welcome-card {
+      position: relative;
+      z-index: 2;
+      text-align: center;
+      width: min(520px, calc(100% - 32px));
+      padding: 44px 36px 36px;
+      background: rgba(6, 11, 20, 0.88);
+      border: 1px solid #1e3a52;
+      box-shadow: 0 0 0 1px rgba(77,163,255,0.08), 0 28px 60px rgba(0,0,0,0.75);
+      backdrop-filter: blur(2px);
+    }
+    .welcome-logo {
+      color: #b4ff39;
+      font-size: clamp(30px, 6vw, 54px);
+      line-height: 1;
+      letter-spacing: 4px;
+      text-shadow: 0 0 24px rgba(100,255,80,0.35);
+      margin-bottom: 10px;
+    }
+    .welcome-title {
+      color: #e2f0ff;
+      font-size: clamp(13px, 2vw, 16px);
+      letter-spacing: 2px;
+      margin-bottom: 6px;
+    }
+    .welcome-tagline {
+      color: #4da3ff;
+      font-size: 0.8rem;
+      letter-spacing: 1px;
+      margin-bottom: 36px;
+    }
+    .welcome-btns {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+    .welcome-btn {
+      padding: 18px 12px;
+      font-family: Consolas, "Courier New", monospace;
+      font-weight: 700;
+      font-size: 0.9rem;
+      letter-spacing: 1px;
+      border: none;
+      cursor: pointer;
+      transition: transform 130ms ease, filter 160ms ease, box-shadow 160ms ease;
+    }
+    .welcome-btn:hover { transform: translateY(-3px); filter: brightness(1.1); }
+    .welcome-btn:active { transform: translateY(0); }
+    .welcome-btn-player {
+      background: linear-gradient(130deg, #165c30, #1d8038);
+      color: #c6ffd8;
+      border: 1px solid #2db56a;
+      box-shadow: 0 0 0 0 rgba(45,181,106,0);
+    }
+    .welcome-btn-player:hover { box-shadow: 0 0 18px rgba(45,181,106,0.3); }
+    .welcome-btn-admin {
+      background: linear-gradient(130deg, #3b1880, #5b28c4);
+      color: #e9d5ff;
+      border: 1px solid #7c3aed;
+      box-shadow: 0 0 0 0 rgba(124,58,237,0);
+    }
+    .welcome-btn-admin:hover { box-shadow: 0 0 18px rgba(124,58,237,0.3); }
+    .welcome-prompt {
+      color: #4a6880;
+      font-size: 0.74rem;
+      letter-spacing: 1px;
+      margin-top: 18px;
+    }
+    @keyframes welcomePulse {
+      0%, 100% { opacity: 0.7; }
+      50% { opacity: 1; }
+    }
+    .welcome-cursor {
+      display: inline-block;
+      animation: welcomePulse 1s ease infinite;
+      color: #9fef00;
+    }
+
+    /* ── RE Briefing Modal ── */
+    #reBriefingModal {
+      position: fixed;
+      inset: 0;
+      z-index: 1900;
+      background: rgba(1, 4, 10, 0.88);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      animation: modalFadeIn 220ms ease;
+    }
+    #reBriefingModal.hidden { display: none; }
+    .briefing-card {
+      width: min(700px, 100%);
+      max-height: 86vh;
+      overflow-y: auto;
+      background: linear-gradient(150deg, #091422, #0d1c30);
+      border: 1px solid #2a4a6a;
+      box-shadow: 0 28px 60px rgba(0,0,0,0.75), inset 0 0 0 1px rgba(77,163,255,0.06);
+      padding: 28px 26px 22px;
+      font-family: Consolas, "Courier New", monospace;
+    }
+    .briefing-top-badge {
+      display: inline-block;
+      border: 1px solid #1e5a2e;
+      background: rgba(30,94,46,0.2);
+      color: #6ee78a;
+      font-size: 0.72rem;
+      padding: 3px 12px;
+      letter-spacing: 2px;
+      margin-bottom: 18px;
+    }
+    .briefing-h1 {
+      color: #9fef00;
+      font-size: 1.5rem;
+      margin: 0 0 6px;
+      text-shadow: 0 0 14px rgba(159,239,0,0.3);
+    }
+    .briefing-lead {
+      color: #5dd4ff;
+      font-size: 0.85rem;
+      margin: 0 0 24px;
+      letter-spacing: 0.5px;
+    }
+    .briefing-block {
+      border-left: 3px solid #1e4a66;
+      padding: 12px 16px;
+      margin-bottom: 14px;
+      background: rgba(8, 16, 28, 0.55);
+    }
+    .briefing-block h4 {
+      margin: 0 0 10px;
+      color: #4da3ff;
+      font-size: 0.82rem;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+    .briefing-block p, .briefing-block ul {
+      margin: 0;
+      color: #b0c6de;
+      font-size: 0.84rem;
+      line-height: 1.65;
+    }
+    .briefing-block ul { padding-left: 18px; margin-top: 8px; }
+    .briefing-block li { margin-bottom: 5px; }
+    .briefing-highlight {
+      border: 1px solid #1e4a2e;
+      background: rgba(20,60,34,0.4);
+      color: #b3f5c8;
+      padding: 12px 16px;
+      margin-bottom: 20px;
+      font-size: 0.83rem;
+      line-height: 1.6;
+    }
+    .briefing-accept {
+      display: block;
+      width: 100%;
+      padding: 16px;
+      background: linear-gradient(130deg, #165c30, #1d8038);
+      border: 1px solid #2db56a;
+      color: #c6ffd8;
+      font-family: Consolas, "Courier New", monospace;
+      font-weight: 700;
+      font-size: 1rem;
+      letter-spacing: 2px;
+      cursor: pointer;
+      transition: filter 160ms ease, transform 120ms ease, box-shadow 160ms ease;
+      margin-top: 4px;
+    }
+    .briefing-accept:hover {
+      filter: brightness(1.1);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(45,181,106,0.3);
+    }
+    .briefing-scroll-note {
+      text-align: center;
+      color: #3a5a6a;
+      font-size: 0.74rem;
+      margin-top: 12px;
+      letter-spacing: 1px;
+    }
+    @keyframes cardFlash {
+      0%   { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
+      25%  { box-shadow: 0 0 0 8px rgba(34,197,94,0.55); }
+      60%  { box-shadow: 0 0 0 14px rgba(34,197,94,0.25); }
+      100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
+    }
+    .card.flash-solved {
+      animation: cardFlash 0.7s ease-out;
+    }
+    .prog-wrap {
+      margin: 6px 0 2px;
+    }
+    .prog-label {
+      font-size: 0.8rem;
+      color: #9fb2c4;
+      margin-bottom: 3px;
+    }
+    .prog-track {
+      background: #0a1520;
+      border: 1px solid #2a3f52;
+      height: 8px;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .prog-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #22c55e, #9fef00);
+      border-radius: 4px;
+      transition: width 0.5s ease;
+    }
+    @keyframes confettiFall {
+      0%   { transform: translateY(0) rotate(0deg); opacity: 0.9; }
+      100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+    }
+    .timed-bar {
+      height: 5px;
+      background: #22c55e;
+      transition: width 1s linear, background 0.4s ease;
+      border-radius: 2px;
+      margin-top: 2px;
+    }
+    .timed-bar.warn   { background: #f59e0b; }
+    .timed-bar.danger { background: #ef4444; }
+    .timed-display {
+      font-size: 0.82rem;
+      color: #8dff75;
+      font-weight: 700;
+      text-align: right;
+      padding-right: 2px;
+    }
+    .timed-display.warn   { color: #f59e0b; }
+    .timed-display.danger { color: #ef4444; }
+    .timed-area {
+      padding: 4px 10px 2px;
+      background: #060e18;
+      border-bottom: 1px solid #1d3148;
+    }
+    .lb-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(1, 5, 10, 0.86);
+      display: grid;
+      place-items: center;
+      padding: 16px;
+      z-index: 990;
+      animation: modalFadeIn 180ms ease;
+    }
+    .lb-modal.hidden { display: none; }
+    .lb-card {
+      width: min(580px, 100%);
+      max-height: 82vh;
+      overflow: auto;
+      border: 1px solid #3f5c77;
+      background: #0c1521;
+      box-shadow: 0 18px 34px rgba(0,0,0,0.6);
+      padding: 14px;
+      display: grid;
+      gap: 10px;
+    }
+    .lb-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .lb-head h3 { margin: 0; color: #9fef00; font-size: 1.05rem; }
+    .lb-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+    .lb-table th { color: #8fb4d0; padding: 6px 8px; border-bottom: 1px solid #2a3f52; text-align: left; }
+    .lb-table td { padding: 6px 8px; border-bottom: 1px solid #1e2f3f; color: #d0dde8; }
+    .lb-rank-1 td { background: rgba(185,141,31,0.12); color: #f7d774; }
+    .lb-rank-2 td { background: rgba(144,161,180,0.1); }
+    .lb-rank-3 td { background: rgba(175,120,82,0.1); color: #e2b191; }
+    .lb-empty { color: #8fa5ba; font-size: 0.88rem; padding: 10px 0; }
   </style>
 </head>
 <body>
@@ -829,6 +1139,7 @@
         <input id="roomCodeInput" type="text" maxlength="8" placeholder="ROOM123" style="text-transform:uppercase;" />
         <button class="btn" id="btnWhat">About Category</button>
         <button class="btn" id="btnHow">Challenge Rules</button>
+        <button class="btn" id="btnScoringRules">Scoring Rules</button>
         <button class="btn" id="btnBeginner">Beginner Tutorial</button>
         <button class="btn" id="btnStory">Story Intro</button>
       </div>
@@ -838,16 +1149,16 @@
 
       <div class="toggles">
         <label><input type="checkbox" checked disabled />Boost Mode (coming soon)</label>
-        <label><input type="checkbox" disabled />Runner Hint Mode (coming soon)</label>
-        <label><input type="checkbox" disabled />Mute SFX (coming soon)</label>
-        <label><input type="checkbox" disabled />Timed Mode (coming soon)</label>
+        <label><input id="runnerHintCheckbox" type="checkbox" />Runner Hint Mode</label>
+        <label><input id="sfxMuteCheckbox" type="checkbox" />Mute SFX</label>
+        <label><input id="timedModeCheckbox" type="checkbox" />Timed Mode (60s)</label>
         <label><input type="checkbox" checked disabled />Classroom Mode (coming soon)</label>
       </div>
 
       <div class="controls">
-        <button class="btn" disabled title="Coming soon">Leaderboard (coming soon)</button>
-        <button class="btn" disabled title="Coming soon">Team Scores (coming soon)</button>
-        <button class="btn" disabled title="Coming soon">Submit Score (coming soon)</button>
+        <button class="btn" id="btnLeaderboard">Live Leaderboard</button>
+        <button class="btn" id="btnTeamScores">Class Stats</button>
+        <button class="btn" id="btnSubmitScore">My Score Card</button>
         <button class="btn" id="btnResetProgress">Reset Score</button>
       </div>
 
@@ -869,6 +1180,10 @@
                 <div>Player Name: <span id="perfPlayerName">Presenter</span></div>
                 <div>Points: <span id="perfPoints">0</span></div>
               </div>
+              <div class="prog-wrap">
+                <div class="prog-label">Completion: <span id="progPct">0%</span></div>
+                <div class="prog-track"><div id="progBar" class="prog-bar" style="width:0%"></div></div>
+              </div>
               <svg id="perfChart" class="perf-chart" viewBox="0 0 320 150" preserveAspectRatio="none" role="img" aria-label="Time and points graph"></svg>
               <div class="perf-note">Green line = solve time interval (seconds). Blue line = cumulative points.</div>
             </div>
@@ -880,7 +1195,81 @@
     </section>
   </div>
 
-  <div id="joinModal" class="join-modal">
+  <!-- ══ WELCOME SCREEN ══ -->
+  <div id="welcomeScreen">
+    <canvas id="welcomeCanvas"></canvas>
+    <div class="welcome-scan"></div>
+    <div class="welcome-card">
+      <div class="welcome-logo">DOOMDADA</div>
+      <div class="welcome-title">WELCOME TO DOOM DADA'S GAME!<span class="welcome-cursor">_</span></div>
+      <div class="welcome-tagline">// REVERSE ENGINEERING BOOTCAMP //</div>
+      <div class="welcome-btns">
+        <button class="welcome-btn welcome-btn-player" id="welcomePlayerBtn" type="button">
+          &gt; JOIN AS PLAYER
+        </button>
+        <button class="welcome-btn welcome-btn-admin" id="welcomeAdminBtn" type="button">
+          &gt; JOIN AS ADMIN
+        </button>
+      </div>
+      <div class="welcome-prompt">Select your entry mode to continue</div>
+    </div>
+  </div>
+
+  <!-- ══ RE BRIEFING MODAL (shown before join, players only) ══ -->
+  <div id="reBriefingModal" class="hidden">
+    <div class="briefing-card">
+      <div class="briefing-top-badge">PRE-GAME BRIEFING</div>
+      <h2 class="briefing-h1">What is Reverse Engineering?</h2>
+      <p class="briefing-lead">Read this before you begin — it will help you think like an analyst.</p>
+
+      <div class="briefing-block">
+        <h4>🔍 Definition</h4>
+        <p>Reverse engineering is the process of analyzing a system, program, or piece of code to understand <strong>how it works</strong> — even without access to the original source code. It's like disassembling a machine to see its gears.</p>
+      </div>
+
+      <div class="briefing-block">
+        <h4>🛡️ Why It Matters in Cybersecurity</h4>
+        <ul>
+          <li>Security researchers use it to uncover hidden malware behavior</li>
+          <li>Defenders analyze suspicious apps to find out what they actually do</li>
+          <li>CTF (Capture the Flag) players reverse-engineer programs to extract hidden flags</li>
+          <li>Developers use it to understand legacy systems with no documentation</li>
+        </ul>
+      </div>
+
+      <div class="briefing-block">
+        <h4>🎮 How This Game Works</h4>
+        <p>Each level gives you a <strong>scrambled or transformed piece of text</strong>. Your job is to:</p>
+        <ul>
+          <li>Read the challenge prompt carefully — the transformation rule is always described</li>
+          <li>Apply the rule step by step (reverse, substitute, reorder...)</li>
+          <li>Wrap your answer in the flag format: <code>DOOM{YOUR_ANSWER}</code></li>
+          <li>Submit for points — faster solves earn speed bonuses!</li>
+        </ul>
+      </div>
+
+      <div class="briefing-block">
+        <h4>📈 What You'll Learn</h4>
+        <ul>
+          <li>How text substitution ciphers work (like ROT13, leet speak)</li>
+          <li>How to trace through logic step by step — a core analyst skill</li>
+          <li>How to spot patterns, work backwards, and reconstruct original data</li>
+          <li>How real-world obfuscation techniques hide information</li>
+        </ul>
+      </div>
+
+      <div class="briefing-highlight">
+        💡 <strong>Remember:</strong> This game simulates what real reverse engineering analysis feels like. There's no guessing — every answer follows a clear logical path. Use the "Need Help?" hints if you're stuck. Read. Think. Trace. Submit.
+      </div>
+
+      <button class="briefing-accept" id="briefingAcceptBtn" type="button">
+        ✓ UNDERSTOOD — LET'S PLAY!
+      </button>
+      <div class="briefing-scroll-note">scroll up to re-read if needed</div>
+    </div>
+  </div>
+
+  <div id="joinModal" class="join-modal hidden">
     <div class="join-card">
       <h3>Join Classroom Lobby</h3>
       <p>Select your role. Admin creates a lobby and shares the room code. Players join with that code before playing.</p>
@@ -898,6 +1287,16 @@
           <label>
             Player Name
             <input id="joinPlayerName" type="text" maxlength="40" placeholder="Your Name" autocomplete="off" />
+          </label>
+          <label>
+            Team
+            <select id="joinTeamSelect">
+              <option value="">(No Team)</option>
+              <option value="Red">Red</option>
+              <option value="Blue">Blue</option>
+              <option value="Green">Green</option>
+              <option value="Yellow">Yellow</option>
+            </select>
           </label>
         </div>
         <div class="join-actions">
@@ -927,11 +1326,55 @@
     </div>
   </div>
 
+  <div id="scoreCardModal" class="lb-modal hidden">
+    <div class="lb-card">
+      <div class="lb-head">
+        <h3>My Score Card</h3>
+        <button class="btn" id="closeScoreCardBtn" type="button">Close</button>
+      </div>
+      <div id="scoreCardContent" class="lb-empty">Play some levels first!</div>
+    </div>
+  </div>
+
+  <div id="classStatsModal" class="lb-modal hidden">
+    <div class="lb-card">
+      <div class="lb-head">
+        <h3>Class Stats</h3>
+        <button class="btn" id="closeClassStatsBtn" type="button">Close</button>
+      </div>
+      <div id="classStatsContent" class="lb-empty">Fetching class stats...</div>
+    </div>
+  </div>
+
+  <div id="lbModal" class="lb-modal hidden">
+    <div class="lb-card">
+      <div class="lb-head">
+        <h3>Live Leaderboard</h3>
+        <button class="btn" id="closeLbModalBtn" type="button">Close</button>
+      </div>
+      <div id="lbContent" class="lb-empty">Fetching leaderboard...</div>
+    </div>
+  </div>
+
+  <div id="scoringRulesModal" class="lb-modal hidden">
+    <div class="lb-card">
+      <div class="lb-head">
+        <h3>Scoring Rules</h3>
+        <button class="btn" id="closeScoringRulesBtn" type="button">Close</button>
+      </div>
+      <div id="scoringRulesContent" class="lb-empty">Loading scoring rules...</div>
+    </div>
+  </div>
+
   <div id="playModal" class="modal hidden">
     <div id="playModalCard" class="modal-card">
       <div class="modal-head">
         <h3 id="challengeTitle">Challenge Workspace</h3>
         <button class="btn" id="closeModalBtn" type="button">Close</button>
+      </div>
+      <div id="timedModeArea" class="timed-area" style="display:none;">
+        <div id="timedDisplay" class="timed-display">60s</div>
+        <div id="timedBar" class="timed-bar" style="width:100%;"></div>
       </div>
       <div id="onboardTip" class="onboard-tip hidden">
         <span>How to play: 1) Read prompt 2) Tap Need Help 3) Submit your flag.</span>
@@ -1064,9 +1507,33 @@ Console: waiting for input</div>
     const onboardTipEl = document.getElementById("onboardTip");
     const dismissOnboardBtn = document.getElementById("dismissOnboardBtn");
     const playModalCardEl = document.getElementById("playModalCard");
+    const timedModeAreaEl = document.getElementById("timedModeArea");
+    const timedDisplayEl  = document.getElementById("timedDisplay");
+    const timedBarEl      = document.getElementById("timedBar");
+    const lbModalEl       = document.getElementById("lbModal");
+    const lbContentEl     = document.getElementById("lbContent");
+    const closeLbModalBtn = document.getElementById("closeLbModalBtn");
+    const btnLeaderboard  = document.getElementById("btnLeaderboard");
+    const sfxMuteCheckboxEl    = document.getElementById("sfxMuteCheckbox");
+    const timedModeCheckboxEl  = document.getElementById("timedModeCheckbox");
+    const runnerHintCheckboxEl = document.getElementById("runnerHintCheckbox");
+    const btnTeamScores        = document.getElementById("btnTeamScores");
+    const btnSubmitScore       = document.getElementById("btnSubmitScore");
+    const scoreCardModalEl     = document.getElementById("scoreCardModal");
+    const scoreCardContentEl   = document.getElementById("scoreCardContent");
+    const closeScoreCardBtn    = document.getElementById("closeScoreCardBtn");
+    const classStatsModalEl    = document.getElementById("classStatsModal");
+    const classStatsContentEl  = document.getElementById("classStatsContent");
+    const closeClassStatsBtn   = document.getElementById("closeClassStatsBtn");
+    const scoringRulesModalEl  = document.getElementById("scoringRulesModal");
+    const scoringRulesContentEl = document.getElementById("scoringRulesContent");
+    const closeScoringRulesBtn = document.getElementById("closeScoringRulesBtn");
+    const progBarEl            = document.getElementById("progBar");
+    const progPctEl            = document.getElementById("progPct");
 
     const btnWhat = document.getElementById("btnWhat");
     const btnHow = document.getElementById("btnHow");
+    const btnScoringRules = document.getElementById("btnScoringRules");
     const btnBeginner = document.getElementById("btnBeginner");
     const btnStory = document.getElementById("btnStory");
     const btnResetProgress = document.getElementById("btnResetProgress");
@@ -1085,13 +1552,34 @@ Console: waiting for input</div>
 
     let levels = [];
     let selectedLevelId = "";
+    let currentChallengeToken = "";
     let score = 0;
+    let streakCount = 0;
     const solved = new Set();
     let doomAttemptsLeft = 3;
     let doomCooldownUntil = 0;
     let doomCooldownLastTick = false;
     let xhardState = null;
     let crazyState = { running: false, startAt: 0, timerId: null };
+    let sfxMuted = false;
+    let timedModeEnabled = false;
+    let timedModeTimerId = null;
+    let timedModeSecondsLeft = 60;
+    const TIMED_MODE_SECONDS = 60;
+    const levelAttempts = new Map();
+    const MAX_ATTEMPTS_PER_LEVEL = 3;
+    let lastLobbyStatus = "";
+    let runnerHintMode = false;
+    const runnerHintLines = {
+      easy:        "hint.inject(level='easy') -> unscramble PMTOOCBA -> BOOTCAMP",
+      medium:      "hint.inject(level='medium') -> E->3, I->1 on EARLYBIRD",
+      mediumplus1: "hint.inject(level='mediumplus1') -> reorder shards [2,3,1] then join '_'",
+      mediumplus2: "hint.inject(level='mediumplus2') -> reverse RUNTIME, then leet, then append !",
+      hard:        "hint.inject(level='hard') -> uppercase positions #1 #3 #6 of ambatukammm",
+      xhard:       "hint.inject(level='xhard') -> combine WE + _7HE + _B3ST",
+      crazy:       "hint.inject(level='crazy') -> start timer, stop near 6.7s",
+      doomdada:    "hint.inject(level='doomdada') -> fix script, run in Python, submit output",
+    };
     const levelStartTimes = new Map();
     const solvedSummaries = new Map();
     const solvedTimeline = [];
@@ -1121,27 +1609,31 @@ Console: waiting for input</div>
     let adminRoomCode = "";
     let adminToken = "";
     let tokenVisible = false;
+    let joinRequestId = "";
+    let joinRequestPollTimer = null;
 
     const doomdadaScriptCode = `# DOOMDADA Final Boss Script (BROKEN ON PURPOSE)
-  # Storyline: Bridge Boy left a damaged script, not direct clues.
-  # Reference: Security team expects one final access token string generated by code execution.
-  # Answer type: Submit the exact printed token in DOOM{...} format (case and symbols must match).
-  # Instruction: Fix missing syntax/variables first, then run in online Python compiler.
+  # Storyline: Bridge Boy left a damaged script. Trace carefully.
+  # Clue 1: The seed phrase is a common word for celebration — all lowercase.
+  # Clue 2: The leet table maps letters to numbers/symbols; 't' becomes the + sign.
+  # Clue 3: apply_case_pattern uppercases index 0 and index 5 (0-based), then appends the full leet suffix after char 8.
+  # Goal: Run the fixed script in an online Python compiler and submit DOOM{output}.
 
   def story_seed() -> str:
-    # TODO: Recover exact phrase from storyline context
+    # TODO: Replace __MISSING_PHRASE__ with the celebration word (hint: ~14 chars)
     return __MISSING_PHRASE__
 
   def apply_leet(text: str) -> str:
-    # TODO: Complete the table
+    # TODO: Fill __MISSING_T__ — 't' maps to the plus/addition symbol
     table = {"o": "0", "g": "6", "a": "@", "t": __MISSING_T__, "s": "$"}
     return "".join(table.get(ch, ch) for ch in text.lower())
 
   def apply_case_pattern(text: str) -> str:
     chars = list(text)
-    # TODO: Fill exact index for second uppercase char
+    # TODO: Fill __MISSING_INDEX__ — second uppercase is at index 5 (0-based)
     chars[0] = chars[0].upper()
     chars[__MISSING_INDEX__] = chars[__MISSING_INDEX__].upper()
+    # Suffix after position 8 is kept as-is from leet stage
     return "".join(chars[:9]) + __MISSING_SUFFIX__
 
   def build_flag() -> str:
@@ -1267,6 +1759,336 @@ Console: waiting for input</div>
       },
     };
 
+    function playSound(type) {
+      if (sfxMuted) return;
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc  = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        if (type === "correct") {
+          osc.type = "sine";
+          osc.frequency.value = 880;
+          gain.gain.setValueAtTime(0.25, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+          osc.start(ctx.currentTime);
+          osc.stop(ctx.currentTime + 0.5);
+          const osc2  = ctx.createOscillator();
+          const gain2 = ctx.createGain();
+          osc2.connect(gain2);
+          gain2.connect(ctx.destination);
+          osc2.type = "sine";
+          osc2.frequency.value = 1100;
+          gain2.gain.setValueAtTime(0, ctx.currentTime);
+          gain2.gain.setValueAtTime(0.2, ctx.currentTime + 0.15);
+          gain2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.65);
+          osc2.start(ctx.currentTime + 0.15);
+          osc2.stop(ctx.currentTime + 0.65);
+        } else if (type === "wrong") {
+          osc.type = "sawtooth";
+          osc.frequency.value = 220;
+          gain.gain.setValueAtTime(0.18, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+          osc.start(ctx.currentTime);
+          osc.stop(ctx.currentTime + 0.3);
+        }
+      } catch {
+        // Audio unavailable or blocked by browser policy.
+      }
+    }
+
+    function burstConfetti() {
+      const container = document.createElement("div");
+      container.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:9999;overflow:hidden;";
+      document.body.appendChild(container);
+      const colors = ["#9fef00","#4da3ff","#facc15","#f472b6","#34d399","#fb923c","#a78bfa"];
+      for (let i = 0; i < 70; i++) {
+        const piece    = document.createElement("div");
+        const color    = colors[Math.floor(Math.random() * colors.length)];
+        const x        = Math.random() * 100;
+        const size     = 5 + Math.random() * 9;
+        const duration = 1.4 + Math.random() * 1.2;
+        const delay    = Math.random() * 0.5;
+        piece.style.cssText = `position:absolute;top:-10px;left:${x}%;width:${size}px;height:${size * 0.55}px;background:${color};opacity:0.92;transform:rotate(${Math.random() * 360}deg);animation:confettiFall ${duration}s ${delay}s ease-out forwards;`;
+        container.appendChild(piece);
+      }
+      setTimeout(() => { if (container.parentNode) container.remove(); }, 3600);
+    }
+
+    function clearLevelTimer() {
+      if (timedModeTimerId) {
+        clearInterval(timedModeTimerId);
+        timedModeTimerId = null;
+      }
+      timedModeSecondsLeft = TIMED_MODE_SECONDS;
+      if (timedModeAreaEl) timedModeAreaEl.style.display = "none";
+    }
+
+    function startLevelTimer() {
+      clearLevelTimer();
+      if (!timedModeEnabled) return;
+      timedModeSecondsLeft = TIMED_MODE_SECONDS;
+      timedModeAreaEl.style.display = "block";
+      timedDisplayEl.textContent = `${timedModeSecondsLeft}s`;
+      timedBarEl.style.width = "100%";
+      timedDisplayEl.className = "timed-display";
+      timedBarEl.className = "timed-bar";
+      function tick() {
+        timedModeSecondsLeft = Math.max(0, timedModeSecondsLeft - 1);
+        const pct      = (timedModeSecondsLeft / TIMED_MODE_SECONDS) * 100;
+        const isDanger = timedModeSecondsLeft <= 10;
+        const isWarn   = timedModeSecondsLeft <= 20 && !isDanger;
+        timedDisplayEl.textContent  = `${timedModeSecondsLeft}s`;
+        timedBarEl.style.width      = `${pct}%`;
+        timedDisplayEl.className    = `timed-display${isDanger ? " danger" : isWarn ? " warn" : ""}`;
+        timedBarEl.className        = `timed-bar${isDanger ? " danger" : isWarn ? " warn" : ""}`;
+        if (timedModeSecondsLeft <= 0) {
+          clearInterval(timedModeTimerId);
+          timedModeTimerId = null;
+          submitAnswerBtn.disabled = true;
+          answerInputEl.disabled   = true;
+          setAnswerStatus("Time's up! Open another level to continue.", true);
+          logRunner(`timed.expired(level='${selectedLevelId}')`);
+          playSound("wrong");
+        }
+      }
+      timedModeTimerId = setInterval(tick, 1000);
+    }
+
+    async function showLeaderboard() {
+      const roomCode = currentRoomCode();
+      if (!roomCode) {
+        lbContentEl.innerHTML = '<div class="lb-empty">No room code set. Join a lobby first.</div>';
+        lbModalEl.classList.remove("hidden");
+        return;
+      }
+      lbContentEl.innerHTML = '<div class="lb-empty">Fetching...</div>';
+      lbModalEl.classList.remove("hidden");
+      try {
+        const res = await fetch(apiUrl(`/api/game/classroom/leaderboard?room_code=${encodeURIComponent(roomCode)}`));
+        if (!res.ok) {
+          const data = await readJsonSafe(res);
+          lbContentEl.innerHTML = `<div class="lb-empty">Could not load: ${(data && data.detail) || res.status}</div>`;
+          return;
+        }
+        const players = await res.json();
+        if (!players.length) {
+          lbContentEl.innerHTML = '<div class="lb-empty">No players yet in this room.</div>';
+          return;
+        }
+        const medals = ["GOLD", "SILVER", "BRONZE"];
+        lbContentEl.innerHTML = `<table class="lb-table">
+          <thead><tr><th>Rank</th><th>Player</th><th>Score</th><th>Solved</th><th>Accuracy</th></tr></thead>
+          <tbody>
+            ${players.map((p) =>
+              `<tr class="${p.rank <= 3 ? `lb-rank-${p.rank}` : ''}">
+                <td>${p.rank <= 3 ? medals[p.rank - 1] : `#${p.rank}`}</td>
+                <td>${p.player_name}</td>
+                <td>${p.score}</td>
+                <td>${p.solved_count}</td>
+                <td>${p.accuracy}%</td>
+              </tr>`
+            ).join("")}
+          </tbody>
+        </table>`;
+      } catch {
+        lbContentEl.innerHTML = '<div class="lb-empty">Network error loading leaderboard.</div>';
+      }
+    }
+
+    function updateProgressBar() {
+      const total = levels.length || 8;
+      const pct   = total ? Math.round((solved.size / total) * 100) : 0;
+      if (progBarEl) progBarEl.style.width = `${pct}%`;
+      if (progPctEl) progPctEl.textContent = `${pct}% (${solved.size}/${total})`;
+    }
+
+    function flashCard(levelId) {
+      const btn = levelsGridEl.querySelector(`[data-level-id="${levelId}"]`);
+      if (!btn) return;
+      const card = btn.closest(".card");
+      if (!card) return;
+      card.classList.remove("flash-solved");
+      void card.offsetWidth; // reflow to restart animation
+      card.classList.add("flash-solved");
+      card.addEventListener("animationend", () => card.classList.remove("flash-solved"), { once: true });
+    }
+
+    function showScoreCard() {
+      const playerName = (playerNameEl.value || "Player").trim();
+      const total = levels.length || 8;
+      const pct   = total ? Math.round((solved.size / total) * 100) : 0;
+      const solvedDetails = Array.from(solvedSummaries.entries()).map(([id, d]) => {
+        const lvl = levels.find((x) => x.id === id);
+        const pts = lvl ? lvl.points : "?";
+        return `<tr><td>${lvl ? lvl.title : id.toUpperCase()}</td><td>${pts} pts</td><td>${formatElapsed(d.seconds)}</td></tr>`;
+      }).join("");
+
+      scoreCardContentEl.innerHTML = `
+        <div style="margin-bottom:10px;font-size:0.9rem;color:#9fef00;">
+          Player: <strong>${playerName}</strong> &nbsp;|&nbsp;
+          Score: <strong>${score}</strong> &nbsp;|&nbsp;
+          Progress: <strong>${pct}%</strong>
+        </div>
+        ${solvedDetails
+          ? `<table class="lb-table">
+              <thead><tr><th>Level</th><th>Points</th><th>Time</th></tr></thead>
+              <tbody>${solvedDetails}</tbody>
+            </table>`
+          : '<div class="lb-empty">No levels solved yet.</div>'}
+        <div style="margin-top:10px;text-align:right;">
+          <button class="btn" id="copyScoreCardBtn" type="button">Copy Summary</button>
+        </div>`;
+
+      const copyBtn = document.getElementById("copyScoreCardBtn");
+      if (copyBtn) {
+        copyBtn.addEventListener("click", async () => {
+          const text = `${playerName} | Score: ${score} | Solved: ${solved.size}/${total} (${pct}%)`;
+          try {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              await navigator.clipboard.writeText(text);
+            } else {
+              const tmp = document.createElement("textarea");
+              tmp.value = text; tmp.setAttribute("readonly",""); tmp.style.position="absolute"; tmp.style.left="-9999px";
+              document.body.appendChild(tmp); tmp.select(); document.execCommand("copy"); document.body.removeChild(tmp);
+            }
+            copyBtn.textContent = "Copied!";
+            setTimeout(() => { copyBtn.textContent = "Copy Summary"; }, 1800);
+          } catch { copyBtn.textContent = "Copy failed"; }
+        });
+      }
+      scoreCardModalEl.classList.remove("hidden");
+    }
+
+    async function showClassStats() {
+      const roomCode = currentRoomCode();
+      if (!roomCode) {
+        classStatsContentEl.innerHTML = '<div class="lb-empty">Join a lobby first to see class stats.</div>';
+        classStatsModalEl.classList.remove("hidden");
+        return;
+      }
+      classStatsContentEl.innerHTML = '<div class="lb-empty">Fetching...</div>';
+      classStatsModalEl.classList.remove("hidden");
+      try {
+        const res = await fetch(apiUrl(`/api/game/classroom/leaderboard?room_code=${encodeURIComponent(roomCode)}`));
+        if (!res.ok) {
+          classStatsContentEl.innerHTML = `<div class="lb-empty">Error: ${res.status}</div>`;
+          return;
+        }
+        const players = await res.json();
+        if (!players.length) {
+          classStatsContentEl.innerHTML = '<div class="lb-empty">No players in this room yet.</div>';
+          return;
+        }
+        const totalSolves   = players.reduce((s, p) => s + p.solved_count, 0);
+        const topScore      = players[0].score;
+        const avgScore      = Math.round(players.reduce((s, p) => s + p.score, 0) / players.length);
+        classStatsContentEl.innerHTML = `
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;">
+            <div class="lb-empty" style="border:1px solid #2a3f52;padding:8px;text-align:center;"><div style="color:#f7d774;font-size:1.1rem;font-weight:700;">${players.length}</div><div>Players</div></div>
+            <div class="lb-empty" style="border:1px solid #2a3f52;padding:8px;text-align:center;"><div style="color:#9fef00;font-size:1.1rem;font-weight:700;">${totalSolves}</div><div>Total Solves</div></div>
+            <div class="lb-empty" style="border:1px solid #2a3f52;padding:8px;text-align:center;"><div style="color:#4da3ff;font-size:1.1rem;font-weight:700;">${avgScore}</div><div>Avg Score</div></div>
+          </div>
+          <table class="lb-table">
+            <thead><tr><th>Rank</th><th>Player</th><th>Score</th><th>Solved</th><th>Accuracy</th></tr></thead>
+            <tbody>
+              ${players.map((p) =>
+                `<tr class="${p.rank <= 3 ? `lb-rank-${p.rank}` : ''}">
+                  <td>${["GOLD","SILVER","BRONZE"][p.rank-1] || `#${p.rank}`}</td>
+                  <td>${p.player_name}${p.score === topScore && players.length > 1 ? " 👑" : ""}</td>
+                  <td>${p.score}</td>
+                  <td>${p.solved_count}</td>
+                  <td>${p.accuracy}%</td>
+                </tr>`
+              ).join("")}
+            </tbody>
+          </table>`;
+      } catch {
+        classStatsContentEl.innerHTML = '<div class="lb-empty">Network error.</div>';
+      }
+    }
+
+    async function showScoringRules() {
+      scoringRulesContentEl.innerHTML = '<div class="lb-empty">Loading scoring rules...</div>';
+      scoringRulesModalEl.classList.remove("hidden");
+      try {
+        const res = await fetch(apiUrl("/api/game/scoring-rules"));
+        if (!res.ok) {
+          scoringRulesContentEl.innerHTML = `<div class="lb-empty">Could not load rules (HTTP ${res.status}).</div>`;
+          return;
+        }
+        const data = await res.json();
+        const rows = (data.levels || []).map((item) => `
+          <tr>
+            <td>${item.title}</td>
+            <td>${String(item.difficulty_tier || "").toUpperCase()}</td>
+            <td>${item.base_points}</td>
+            <td>${item.speed_target_seconds}s</td>
+            <td>${item.speed_points_per_second}/s</td>
+            <td>${Math.round((item.speed_bonus_cap_percent || 0) * 100)}%</td>
+          </tr>
+        `).join("");
+
+        scoringRulesContentEl.innerHTML = `
+          <div class="lb-empty" style="border:1px solid #2a3f52;padding:8px;line-height:1.45;">
+            <strong>Core Rules</strong><br>
+            ${data.base_rule || ""}<br>
+            ${data.tier_bonus_rule || ""}<br>
+            ${data.streak_bonus_rule || ""}<br>
+            ${data.speed_bonus_rule || ""}<br>
+            Streak bonus cap: <strong>${Math.round((data.streak_bonus_cap_percent || 0) * 100)}%</strong>
+          </div>
+          <table class="lb-table">
+            <thead>
+              <tr><th>Level</th><th>Tier</th><th>Base</th><th>Speed Target</th><th>Speed Gain</th><th>Speed Cap</th></tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+        `;
+      } catch {
+        scoringRulesContentEl.innerHTML = '<div class="lb-empty">Network error loading scoring rules.</div>';
+      }
+    }
+
+    function copyFlagToClipboard(flag) {
+      if (!flag) return;
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(flag).catch(() => {});
+        } else {
+          const tmp = document.createElement("textarea");
+          tmp.value = flag; tmp.setAttribute("readonly",""); tmp.style.position="absolute"; tmp.style.left="-9999px";
+          document.body.appendChild(tmp); tmp.select(); document.execCommand("copy"); document.body.removeChild(tmp);
+        }
+      } catch { /* clipboard unavailable */ }
+    }
+
+    async function pollLobbyStatus() {
+      const roomCode = currentRoomCode();
+      if (!roomCode || !hasJoinedLobby) return;
+      try {
+        const res = await fetch(apiUrl(`/api/lobby/${encodeURIComponent(roomCode)}/public`));
+        if (!res.ok) return;
+        const data = await res.json();
+        const newStatus = data.lobby_status || "waiting";
+        if (newStatus === "ended") {
+          lobbyJoinStatusEl.textContent = `[ENDED] Room: ${roomCode} | Final results locked by admin.`;
+          lastLobbyStatus = newStatus;
+          return;
+        }
+        if (lastLobbyStatus === "waiting" && newStatus === "live") {
+          lobbyJoinStatusEl.textContent = `[LIVE] Game started! Room: ${roomCode} | Players: ${data.players || 0}`;
+          logRunner(`lobby.event('game_started', room='${roomCode}')`);
+        } else if (newStatus === "live" && lastLobbyStatus !== "live") {
+          lobbyJoinStatusEl.textContent = `[LIVE] Room: ${roomCode} | Players: ${data.players || 0} | Game in progress`;
+        }
+        lastLobbyStatus = newStatus;
+      } catch {
+        // Polling failure is non-fatal.
+      }
+    }
+
     function activeGuide() {
       return levelGuides[selectedLevelId] || null;
     }
@@ -1331,6 +2153,33 @@ Console: waiting for input</div>
       joinStatusEl.classList.toggle("error", isError);
     }
 
+    function joinRequestStorageKey(roomCode) {
+      const normalized = (roomCode || "").trim().toUpperCase();
+      return normalized ? `doomdada_join_request_${normalized}` : "doomdada_join_request_default";
+    }
+
+    function loadJoinRequestId(roomCode) {
+      try {
+        return localStorage.getItem(joinRequestStorageKey(roomCode)) || "";
+      } catch {
+        return "";
+      }
+    }
+
+    function saveJoinRequestId(roomCode, requestId) {
+      try {
+        localStorage.setItem(joinRequestStorageKey(roomCode), requestId || "");
+      } catch {
+      }
+    }
+
+    function clearJoinRequestId(roomCode) {
+      try {
+        localStorage.removeItem(joinRequestStorageKey(roomCode));
+      } catch {
+      }
+    }
+
     function maskedToken(value) {
       if (!value) {
         return "";
@@ -1381,9 +2230,84 @@ Console: waiting for input</div>
       return value || null;
     }
 
-    async function joinLobby() {
+    function stopJoinRequestPolling() {
+      if (joinRequestPollTimer) {
+        clearInterval(joinRequestPollTimer);
+        joinRequestPollTimer = null;
+      }
+    }
+
+    async function finalizeLobbyJoin(roomCode, playerName, stats) {
+      hasJoinedLobby = true;
+      joinRequestId = "";
+      stopJoinRequestPolling();
+
+      roomCodeInputEl.value = roomCode;
+      playerNameEl.value = playerName;
+      joinRoomCodeEl.value = roomCode;
+      joinPlayerNameEl.value = playerName;
+      localStorage.setItem("doomdada_room_code_v1", roomCode);
+      localStorage.setItem("doomdada_player_name_v1", playerName);
+      clearJoinRequestId(roomCode);
+
+      const players = stats && typeof stats.players === "number" ? stats.players : "-";
+      const spectators = stats && typeof stats.spectators === "number" ? stats.spectators : "-";
+      lobbyJoinStatusEl.textContent = `Lobby joined: ${roomCode} | Player: ${playerName} | Players: ${players} | Spectators: ${spectators}`;
+
+      joinModalEl.classList.add("hidden");
+      renderPerformanceBoard();
+      await syncPlayerSession();
+      if (!levelsLoaded) {
+        levelsLoaded = true;
+        await loadLevels();
+      }
+      setAnswerStatus(`Joined lobby ${roomCode}. Pick a challenge to begin.`);
+    }
+
+    function startJoinRequestPolling(roomCode, playerName) {
+      stopJoinRequestPolling();
+      if (!joinRequestId) {
+        return;
+      }
+      joinRequestPollTimer = setInterval(async () => {
+        try {
+          const res = await fetch(apiUrl(`/api/lobby/${encodeURIComponent(roomCode)}/join-requests/${encodeURIComponent(joinRequestId)}`));
+          if (!res.ok) {
+            return;
+          }
+          const data = await res.json();
+          const status = String(data.status || "pending");
+
+          if (status === "pending") {
+            setJoinStatus("Join request pending. Waiting for admin approval...", false);
+            return;
+          }
+
+          if (status === "approved") {
+            setJoinStatus("Approved by admin. Joining now...", false);
+            stopJoinRequestPolling();
+            await joinLobby({ silent: true });
+            return;
+          }
+
+          if (status === "denied") {
+            stopJoinRequestPolling();
+            clearJoinRequestId(roomCode);
+            joinRequestId = "";
+            setJoinStatus("Join request denied by admin. You can request again.", true);
+            lobbyJoinStatusEl.textContent = `Lobby: Request denied for room ${roomCode}. Ask admin to approve.`;
+          }
+        } catch {
+          // Keep polling on transient network errors.
+        }
+      }, 3000);
+    }
+
+    async function joinLobby(options = {}) {
+      const silent = Boolean(options.silent);
       const roomCode = (joinRoomCodeEl.value || "").trim().toUpperCase();
       const playerName = (joinPlayerNameEl.value || "").trim();
+      const team = (document.getElementById("joinTeamSelect")?.value || "").trim();
 
       if (!roomCode) {
         setJoinStatus("Room code is required.", true);
@@ -1395,13 +2319,15 @@ Console: waiting for input</div>
       }
 
       joinLobbyBtn.disabled = true;
-      setJoinStatus("Joining lobby...", false);
+      if (!silent) {
+        setJoinStatus("Joining lobby...", false);
+      }
 
       try {
         const res = await fetch(apiUrl("/api/lobby/join"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ room_code: roomCode, name: playerName, role: "player", client_id: clientId })
+          body: JSON.stringify({ room_code: roomCode, name: playerName, role: "player", client_id: clientId, team: team })
         });
         const data = await readJsonSafe(res);
 
@@ -1414,27 +2340,20 @@ Console: waiting for input</div>
           return;
         }
 
-        hasJoinedLobby = true;
-        roomCodeInputEl.value = roomCode;
-        playerNameEl.value = playerName;
-        joinRoomCodeEl.value = roomCode;
-        joinPlayerNameEl.value = playerName;
-        localStorage.setItem("doomdada_room_code_v1", roomCode);
-        localStorage.setItem("doomdada_player_name_v1", playerName);
+        if (data && data.status === "pending") {
+          hasJoinedLobby = false;
+          joinRequestId = String((data && data.request_id) || "");
+          if (joinRequestId) {
+            saveJoinRequestId(roomCode, joinRequestId);
+          }
+          setJoinStatus("Join request sent. Waiting for admin approval...", false);
+          lobbyJoinStatusEl.textContent = `Lobby request sent: ${roomCode} | Player: ${playerName} | Awaiting admin approval`;
+          startJoinRequestPolling(roomCode, playerName);
+          return;
+        }
 
         const stats = data && data.stats ? data.stats : null;
-        const players = stats && typeof stats.players === "number" ? stats.players : "-";
-        const spectators = stats && typeof stats.spectators === "number" ? stats.spectators : "-";
-        lobbyJoinStatusEl.textContent = `Lobby joined: ${roomCode} | Player: ${playerName} | Players: ${players} | Spectators: ${spectators}`;
-
-        joinModalEl.classList.add("hidden");
-        renderPerformanceBoard();
-        await syncPlayerSession();
-        if (!levelsLoaded) {
-          levelsLoaded = true;
-          await loadLevels();
-        }
-        setAnswerStatus(`Joined lobby ${roomCode}. Pick a challenge to begin.`);
+        await finalizeLobbyJoin(roomCode, playerName, stats);
       } catch {
         setJoinStatus("Network error while joining lobby.", true);
       } finally {
@@ -1534,7 +2453,7 @@ Console: waiting for input</div>
           ? ` | DOOMDADA: [BLOCK] ${formatCooldownClock(getDoomCooldownRemainingMs())}`
           : ` | DOOMDADA attempts left: ${doomAttemptsLeft}`;
       }
-      challengeProgressPanelEl.textContent = `Solved: ${solvedCount}/${total} | Score: ${score}${extra}`;
+      challengeProgressPanelEl.textContent = `Solved: ${solvedCount}/${total} | Score: ${score} | Streak: ${streakCount}${extra}`;
     }
 
     function logRunner(line) {
@@ -1659,20 +2578,22 @@ Console: waiting for input</div>
       }
 
       levelsGridEl.innerHTML = levels.map((lvl) => `
-        <article class="card level-${lvl.id} ${selectedLevelId === lvl.id ? "active" : ""} ${solved.has(lvl.id) ? "done" : ""} ${lvl.id === "doomdada" && isDoomBlocked() ? "blocked" : ""}">
+        <article class="card level-${lvl.id} ${selectedLevelId === lvl.id ? "active" : ""} ${solved.has(lvl.id) ? "done" : ""} ${(lvl.unlocked === false || (lvl.id === "doomdada" && isDoomBlocked())) ? "blocked" : ""}">
           <div class="card-top">
             <h3>${lvl.title}</h3>
             <div class="points">${lvl.points} pts</div>
           </div>
           <div class="card-chips">
             <span>${challengeDifficulty(lvl.id)}</span>
+            <span>Tier: ${String(lvl.difficulty_tier || "n/a").toUpperCase()}</span>
             <span>${lvl.id.toUpperCase()}</span>
             ${solved.has(lvl.id) ? '<span class="chip-solved">Solved</span>' : '<span>Unsolved</span>'}
+            ${lvl.unlocked === false ? '<span class="chip-locked">LOCKED</span>' : ''}
             ${lvl.id === "doomdada" && isDoomBlocked() ? `<span class="chip-locked">BLOCK ${formatCooldownClock(getDoomCooldownRemainingMs())}</span>` : ""}
           </div>
-          <p>${lvl.id === "doomdada" && isDoomBlocked() ? `[ BLOCK ] Locked for ${formatCooldownClock(getDoomCooldownRemainingMs())}` : lvl.description}</p>
+          <p>${lvl.unlocked === false ? (lvl.unlock_hint || `Locked until ${lvl.required_solved} solved levels.`) : (lvl.id === "doomdada" && isDoomBlocked() ? `[ BLOCK ] Locked for ${formatCooldownClock(getDoomCooldownRemainingMs())}` : lvl.description)}</p>
           <div style="margin-top:10px;">
-            <button class="btn alt" data-level-id="${lvl.id}" ${lvl.id === "doomdada" && isDoomBlocked() ? "disabled" : ""}>${lvl.id === "doomdada" && isDoomBlocked() ? `[ BLOCK ] ${formatCooldownClock(getDoomCooldownRemainingMs())}` : `${solved.has(lvl.id) ? "Replay" : "Start"} ${lvl.title}`}</button>
+            <button class="btn alt" data-level-id="${lvl.id}" ${(lvl.unlocked === false || (lvl.id === "doomdada" && isDoomBlocked())) ? "disabled" : ""}>${lvl.unlocked === false ? "Locked" : (lvl.id === "doomdada" && isDoomBlocked() ? `[ BLOCK ] ${formatCooldownClock(getDoomCooldownRemainingMs())}` : `${solved.has(lvl.id) ? "Replay" : "Start"} ${lvl.title}`)}</button>
           </div>
         </article>
       `).join("");
@@ -1699,6 +2620,7 @@ Console: waiting for input</div>
 
     function closePlayModal() {
       playModalEl.classList.add("hidden");
+      clearLevelTimer();
     }
 
     function applyModalTheme(levelId) {
@@ -1904,7 +2826,8 @@ Console: waiting for input</div>
           return;
         }
 
-        const res = await fetch(apiUrl(`/api/game/levels/${encodeURIComponent(levelId)}`));
+        const roomCode = currentRoomCode() || "";
+        const res = await fetch(apiUrl(`/api/game/levels/${encodeURIComponent(levelId)}?client_id=${encodeURIComponent(clientId)}&room_code=${encodeURIComponent(roomCode)}`));
         const data = await res.json();
         if (!res.ok) {
           setAnswerStatus(data.detail || "Could not load challenge.", true);
@@ -1912,12 +2835,14 @@ Console: waiting for input</div>
         }
 
         selectedLevelId = data.id;
+        currentChallengeToken = data.challenge_token || "";
         applyModalTheme(data.id);
         challengeTitleEl.textContent = `${data.title} Challenge`;
-        challengeMetaEl.textContent = `${data.description} | ${data.points} points | Total Score: ${score}`;
+        challengeMetaEl.textContent = `${data.description} | ${data.points} points | Tier: ${String(data.difficulty_tier || "n/a").toUpperCase()} | Total Score: ${score}`;
         challengeMetaBadgesEl.innerHTML = `
           <span>Category: Reverse Engineering</span>
           <span>Difficulty: ${challengeDifficulty(data.id)}</span>
+          <span>Tier: ${String(data.difficulty_tier || "n/a").toUpperCase()}</span>
           <span>Points: ${data.points}</span>
         `;
         challengePromptEl.textContent = data.id === "doomdada" ? doomdadaScriptCode : data.challenge_prompt;
@@ -1925,6 +2850,9 @@ Console: waiting for input</div>
         setAnswerStatus(`Loaded ${data.title}. Submit your flag.`, false);
         logRunner(`task.inject('${data.id}_challenge')`);
         levelStartTimes.set(data.id, performance.now());
+        if (runnerHintMode && runnerHintLines[data.id]) {
+          setTimeout(() => logRunner(runnerHintLines[data.id]), 600);
+        }
         guidancePanelEl.textContent = "Welcome to the guidance panel.\nClick any helper button to show explanations while the challenge stays visible.";
         miniConsoleEl.textContent = "# Try Python here. Examples:\n# build_flag()\n# result = build_flag(); print(result)\n\nConsole: waiting for input";
         setDoomdadaNoHintMode(data.id === "doomdada");
@@ -1939,8 +2867,10 @@ Console: waiting for input</div>
           renderDoomdadaCompilerNote();
         }
 
+        levelAttempts.set(data.id, MAX_ATTEMPTS_PER_LEVEL);
         if (openModal) {
           openPlayModal();
+          startLevelTimer();
         }
 
         updateChallengeProgress();
@@ -1953,6 +2883,11 @@ Console: waiting for input</div>
     async function submitAnswer() {
       if (!selectedLevelId) {
         setAnswerStatus("Select a level first.", true);
+        return;
+      }
+
+      if (!currentChallengeToken) {
+        setAnswerStatus("Challenge token missing. Re-open the level and submit again.", true);
         return;
       }
 
@@ -1981,9 +2916,11 @@ Console: waiting for input</div>
           body: JSON.stringify({
             level_id: selectedLevelId,
             answer,
+            challenge_token: currentChallengeToken,
             client_id: clientId,
             player_name: (playerNameEl.value || "Presenter").trim() || "Presenter",
-            room_code: currentRoomCode()
+            room_code: currentRoomCode(),
+            solve_seconds: levelStartTimes.has(selectedLevelId) ? (performance.now() - levelStartTimes.get(selectedLevelId)) / 1000 : null
           })
         });
         const data = await res.json();
@@ -1994,6 +2931,7 @@ Console: waiting for input</div>
         }
 
         if (data.correct) {
+          streakCount = typeof data.streak_count === "number" ? data.streak_count : streakCount;
           const levelStartAt = levelStartTimes.get(selectedLevelId);
           const elapsedSeconds = levelStartAt ? (performance.now() - levelStartAt) / 1000 : 0;
           const previous = solvedSummaries.get(selectedLevelId);
@@ -2015,14 +2953,39 @@ Console: waiting for input</div>
             playModalCardEl.classList.remove("glitch-1", "glitch-2", "glitch-3");
           }
           const solvedTitle = levels.find((x) => x.id === selectedLevelId)?.title || selectedLevelId.toUpperCase();
-          setAnswerStatus(`${data.message} | Problem Solved: ${solvedTitle}, Time: ${formatElapsed(elapsedSeconds)} | Score: ${score}`, false);
+          const rewardLine = `Base: ${data.base_points || 0}, Bonus: ${data.bonus_points || 0}, Streak: ${streakCount}`;
+          setAnswerStatus(`${data.message} | Problem Solved: ${solvedTitle}, Time: ${formatElapsed(elapsedSeconds)} | ${rewardLine} | Score: ${score}`, false);
           challengeMetaEl.textContent = `${levels.find((x) => x.id === selectedLevelId)?.description || ""} | Score: ${score}`;
+          clearLevelTimer();
+          playSound("correct");
+          burstConfetti();
           logRunner(`score.update(level='${selectedLevelId}', total=${score})`);
+          flashCard(selectedLevelId);
+          updateProgressBar();
+          // Offer copy-flag button
+          const lastAnswer = (answerInputEl.value || "").trim();
+          const flagMatch = lastAnswer.toUpperCase().startsWith("DOOM{") ? lastAnswer : null;
+          setAnswerStatus(`${data.message} | Problem Solved: ${solvedTitle}, Time: ${formatElapsed(elapsedSeconds)} | ${rewardLine} | Score: ${score}`);
+          if (flagMatch) {
+            const copyBtn = document.createElement("button");
+            copyBtn.textContent = "Copy Flag";
+            copyBtn.className = "btn alt";
+            copyBtn.style.marginLeft = "8px";
+            copyBtn.style.fontSize = "0.8rem";
+            copyBtn.style.padding = "3px 8px";
+            copyBtn.addEventListener("click", () => {
+              copyFlagToClipboard(flagMatch);
+              copyBtn.textContent = "Copied!";
+              setTimeout(() => { if (copyBtn.parentNode) copyBtn.remove(); }, 2000);
+            });
+            answerStatusEl.appendChild(copyBtn);
+          }
           renderSolvedBoard();
           renderPerformanceBoard();
           updateChallengeProgress();
           renderLevels();
         } else {
+          streakCount = typeof data.streak_count === "number" ? data.streak_count : streakCount;
           if (selectedLevelId === "doomdada") {
             doomAttemptsLeft = typeof data.attempts_left === "number" ? data.attempts_left : doomAttemptsLeft;
             if (typeof data.cooldown_remaining_seconds === "number") {
@@ -2032,6 +2995,7 @@ Console: waiting for input</div>
             }
             applyModalTheme("doomdada");
             if (data.blocked) {
+              playSound("wrong");
               setAnswerStatus(data.message || "[ BLOCK ] DOOMDADA locked due to repeated wrong attempts.", true);
               renderLevels();
               closePlayModal();
@@ -2040,7 +3004,18 @@ Console: waiting for input</div>
               return;
             }
           }
-          setAnswerStatus(data.message || "Incorrect answer.", true);
+          playSound("wrong");
+          if (selectedLevelId !== "doomdada") {
+            const prev = levelAttempts.get(selectedLevelId) ?? MAX_ATTEMPTS_PER_LEVEL;
+            const remaining = Math.max(0, prev - 1);
+            levelAttempts.set(selectedLevelId, remaining);
+            const attemptsMsg = remaining > 0
+              ? ` | Attempts remaining: ${remaining}`
+              : " | No attempts left — keep trying!";
+            setAnswerStatus((data.message || "Incorrect answer.") + attemptsMsg, true);
+          } else {
+            setAnswerStatus(data.message || "Incorrect answer.", true);
+          }
           logRunner(`solver.reject(level='${selectedLevelId}')`);
           updateChallengeProgress();
         }
@@ -2056,7 +3031,8 @@ Console: waiting for input</div>
         return;
       }
       try {
-        const res = await fetch(apiUrl("/api/game/levels"));
+        const roomCode = currentRoomCode() || "";
+        const res = await fetch(apiUrl(`/api/game/levels?client_id=${encodeURIComponent(clientId)}&room_code=${encodeURIComponent(roomCode)}`));
         if (!res.ok) {
           setAnswerStatus("Could not fetch levels.", true);
           return;
@@ -2076,12 +3052,15 @@ Console: waiting for input</div>
 
     function resetProgress() {
       score = 0;
+      streakCount = 0;
       solved.clear();
       solvedSummaries.clear();
       levelStartTimes.clear();
       solvedTimeline.length = 0;
+      currentChallengeToken = "";
       doomAttemptsLeft = 3;
       doomCooldownUntil = 0;
+      levelAttempts.clear();
       if (crazyState.timerId) {
         clearInterval(crazyState.timerId);
         crazyState.timerId = null;
@@ -2094,6 +3073,7 @@ Console: waiting for input</div>
       logRunner("state.reset(progress=true)");
       renderSolvedBoard();
       renderPerformanceBoard();
+      updateProgressBar();
       updateChallengeProgress();
     }
 
@@ -2125,6 +3105,7 @@ Console: waiting for input</div>
 
     btnWhat.addEventListener("click", () => { missionBriefEl.textContent = infoBriefs.what; });
     btnHow.addEventListener("click", () => { missionBriefEl.textContent = infoBriefs.how; });
+    btnScoringRules.addEventListener("click", showScoringRules);
     btnBeginner.addEventListener("click", () => { missionBriefEl.textContent = infoBriefs.beginner; });
     btnStory.addEventListener("click", () => { missionBriefEl.textContent = infoBriefs.story; });
     btnResetProgress.addEventListener("click", resetProgress);
@@ -2242,18 +3223,147 @@ Console: waiting for input</div>
     btnInsertCase.addEventListener("click", () => appendMiniConsole("stage2 = apply_case_pattern(stage1)  # C0n6r@+Ul4tIoN$!"));
     btnInsertBuild.addEventListener("click", () => appendMiniConsole("flag = build_flag()  # DOOM{C0n6r@+Ul4tIoN$!}"));
 
+    sfxMuteCheckboxEl.addEventListener("change", () => { sfxMuted = sfxMuteCheckboxEl.checked; });
+    timedModeCheckboxEl.addEventListener("change", () => {
+      timedModeEnabled = timedModeCheckboxEl.checked;
+      if (!timedModeEnabled) {
+        clearLevelTimer();
+        submitAnswerBtn.disabled = false;
+        answerInputEl.disabled   = false;
+      } else if (selectedLevelId && playModalEl && !playModalEl.classList.contains("hidden")) {
+        startLevelTimer();
+      }
+    });
+    closeLbModalBtn.addEventListener("click", () => lbModalEl.classList.add("hidden"));
+    lbModalEl.addEventListener("click", (e) => { if (e.target === lbModalEl) lbModalEl.classList.add("hidden"); });
+    btnLeaderboard.addEventListener("click", showLeaderboard);
+
+    btnSubmitScore.addEventListener("click", showScoreCard);
+    btnTeamScores.addEventListener("click", showClassStats);
+    closeScoreCardBtn.addEventListener("click", () => scoreCardModalEl.classList.add("hidden"));
+    scoreCardModalEl.addEventListener("click", (e) => { if (e.target === scoreCardModalEl) scoreCardModalEl.classList.add("hidden"); });
+    closeClassStatsBtn.addEventListener("click", () => classStatsModalEl.classList.add("hidden"));
+    classStatsModalEl.addEventListener("click", (e) => { if (e.target === classStatsModalEl) classStatsModalEl.classList.add("hidden"); });
+    closeScoringRulesBtn.addEventListener("click", () => scoringRulesModalEl.classList.add("hidden"));
+    scoringRulesModalEl.addEventListener("click", (e) => { if (e.target === scoringRulesModalEl) scoringRulesModalEl.classList.add("hidden"); });
+
+    runnerHintCheckboxEl.addEventListener("change", () => {
+      runnerHintMode = runnerHintCheckboxEl.checked;
+      if (runnerHintMode && selectedLevelId && runnerHintLines[selectedLevelId]) {
+        logRunner(runnerHintLines[selectedLevelId]);
+      }
+    });
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key !== "Escape") return;
+      if (!playModalEl.classList.contains("hidden")) { closePlayModal(); return; }
+      if (!lbModalEl.classList.contains("hidden"))   { lbModalEl.classList.add("hidden"); return; }
+      if (!scoreCardModalEl.classList.contains("hidden"))   { scoreCardModalEl.classList.add("hidden"); return; }
+      if (!classStatsModalEl.classList.contains("hidden"))  { classStatsModalEl.classList.add("hidden"); return; }
+      if (!scoringRulesModalEl.classList.contains("hidden"))  { scoringRulesModalEl.classList.add("hidden"); return; }
+    });
+
     logRunner("boot.sequence('doomdada-ui') -> ready");
     renderSolvedBoard();
     renderPerformanceBoard();
+    updateProgressBar();
     updateChallengeProgress();
-    if (savedRoomCode && savedPlayerName) {
-      joinLobby();
-    } else {
+    if (savedRoomCode) {
+      joinRequestId = loadJoinRequestId(savedRoomCode);
+    }
+
+    // ── Welcome screen & matrix rain ──────────────────────────────────────
+    const welcomeScreenEl   = document.getElementById("welcomeScreen");
+    const welcomePlayerBtn  = document.getElementById("welcomePlayerBtn");
+    const welcomeAdminBtn   = document.getElementById("welcomeAdminBtn");
+    const reBriefingModal   = document.getElementById("reBriefingModal");
+    const briefingAcceptBtn = document.getElementById("briefingAcceptBtn");
+
+    // Matrix rain on the welcome canvas
+    (function startMatrixRain() {
+      const canvas = document.getElementById("welcomeCanvas");
+      if (!canvas) return;
+      const ctx = canvas.getContext("2d");
+      const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$%^&*(){}[]<>?/\\|~=+-_DOOMDADA";
+      let cols, drops;
+
+      function resize() {
+        canvas.width  = window.innerWidth;
+        canvas.height = window.innerHeight;
+        cols  = Math.floor(canvas.width / 16);
+        drops = Array.from({ length: cols }, () => Math.random() * -50 | 0);
+      }
+      resize();
+      window.addEventListener("resize", resize);
+
+      function draw() {
+        if (welcomeScreenEl.classList.contains("hidden")) return;
+        ctx.fillStyle = "rgba(5, 10, 16, 0.16)";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.font = "13px Consolas, monospace";
+        for (let i = 0; i < cols; i++) {
+          const ch = chars[Math.random() * chars.length | 0];
+          const x  = i * 16;
+          const y  = drops[i] * 16;
+          // gradient: lead char bright green, trail fades
+          const age = drops[i] % 30;
+          if (age < 2) {
+            ctx.fillStyle = "#e0ffe8";
+          } else if (age < 6) {
+            ctx.fillStyle = "#9fef00";
+          } else {
+            const alpha = Math.max(0.06, 1 - age / 30);
+            ctx.fillStyle = `rgba(50,200,80,${alpha.toFixed(2)})`;
+          }
+          ctx.fillText(ch, x, y);
+          if (y > canvas.height && Math.random() > 0.975) drops[i] = 0;
+          drops[i] += 0.5;
+        }
+        requestAnimationFrame(draw);
+      }
+      draw();
+    })();
+
+    function dismissWelcome(afterFn) {
+      welcomeScreenEl.classList.add("fade-out");
+      setTimeout(() => {
+        welcomeScreenEl.classList.add("hidden");
+        welcomeScreenEl.classList.remove("fade-out");
+        if (afterFn) afterFn();
+      }, 420);
+    }
+
+    welcomePlayerBtn.addEventListener("click", () => {
+      dismissWelcome(() => {
+        reBriefingModal.classList.remove("hidden");
+      });
+    });
+
+    welcomeAdminBtn.addEventListener("click", () => {
+      dismissWelcome(() => {
+        window.location.href = "/admin";
+      });
+    });
+
+    briefingAcceptBtn.addEventListener("click", () => {
+      reBriefingModal.classList.add("hidden");
+      // After briefing, go to join modal in player mode
       setJoinMode("player");
       joinModalEl.classList.remove("hidden");
       setJoinStatus("Waiting for room code and player name.", false);
+    });
+
+    // Always show the welcome screen — no auto-skip.
+    // Saved credentials are pre-filled but the player still clicks through.
+    if (savedRoomCode && savedPlayerName) {
+      if (joinRequestId) {
+        setJoinStatus("Found pending join request. Waiting for admin approval...", false);
+        lobbyJoinStatusEl.textContent = `Lobby request pending: ${savedRoomCode} | Player: ${savedPlayerName}`;
+      }
     }
+
     setInterval(syncPlayerSession, 30000);
+    setInterval(pollLobbyStatus, 5000);
   </script>
 </body>
 </html>
