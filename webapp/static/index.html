@@ -3347,10 +3347,15 @@ Console: waiting for input</div>
 
     briefingAcceptBtn.addEventListener("click", () => {
       reBriefingModal.classList.add("hidden");
-      // After briefing, go to join modal in player mode
+      // Clear stale room code — the admin issues a fresh code each session.
+      // Keep player name since that's still valid.
+      joinRoomCodeEl.value = "";
+      roomCodeInputEl.value = "";
+      localStorage.removeItem("doomdada_room_code_v1");
+      hasJoinedLobby = false;
       setJoinMode("player");
       joinModalEl.classList.remove("hidden");
-      setJoinStatus("Waiting for room code and player name.", false);
+      setJoinStatus("Enter the room code your teacher shared, then click Join.", false);
     });
 
     // Always show the welcome screen — no auto-skip.
