@@ -734,13 +734,13 @@ class DoomdadaGuard:
 
 GAME_LEVELS: list[GameLevel] = [
     GameLevel(id="easy", title="Easy", points=50, description="Bridge Note - Warm-up Word", difficulty_tier="easy", required_solved=0),
-    GameLevel(id="medium", title="Medium", points=100, description="Earl's Tag - EARLYBIRD Cipher", difficulty_tier="medium", required_solved=1),
-    GameLevel(id="mediumplus1", title="Medium+ 1", points=125, description="Split and Rebuild - Ordered Packet", difficulty_tier="medium-plus", required_solved=2),
-    GameLevel(id="mediumplus2", title="Medium+ 2", points=140, description="Layered Transform - Reverse and Replace", difficulty_tier="medium-plus", required_solved=3),
-    GameLevel(id="hard", title="Hard", points=150, description="Mask Pattern - Case Control", difficulty_tier="hard", required_solved=4),
-    GameLevel(id="xhard", title="XHARD", points=200, description="Block Hunt - Story Clue Puzzle", difficulty_tier="very-hard", required_solved=5),
-    GameLevel(id="crazy", title="CRAZY", points=250, description="Reaction Core - Precision Timing", difficulty_tier="insane", required_solved=6),
-    GameLevel(id="doomdada", title="DOOMDADA", points=300, description="Final Boss Story Script", difficulty_tier="elite", required_solved=7),
+    GameLevel(id="medium", title="Medium", points=100, description="Earl's Tag - EARLYBIRD Cipher", difficulty_tier="medium", required_solved=0),
+    GameLevel(id="mediumplus1", title="Medium+ 1", points=125, description="Split and Rebuild - Ordered Packet", difficulty_tier="medium-plus", required_solved=0),
+    GameLevel(id="mediumplus2", title="Medium+ 2", points=140, description="Layered Transform - Reverse and Replace", difficulty_tier="medium-plus", required_solved=0),
+    GameLevel(id="hard", title="Hard", points=150, description="Mask Pattern - Case Control", difficulty_tier="hard", required_solved=0),
+    GameLevel(id="xhard", title="XHARD", points=200, description="Block Hunt - Story Clue Puzzle", difficulty_tier="very-hard", required_solved=0),
+    GameLevel(id="crazy", title="CRAZY", points=250, description="Reaction Core - Precision Timing", difficulty_tier="insane", required_solved=0),
+    GameLevel(id="doomdada", title="DOOMDADA", points=300, description="Final Boss Story Script", difficulty_tier="elite", required_solved=0),
 ]
 
 LEVEL_BY_ID: dict[str, GameLevel] = {level.id: level for level in GAME_LEVELS}
@@ -1270,13 +1270,6 @@ def get_game_level_detail(level_id: str, client_id: str | None = None, room_code
     if not level:
         raise HTTPException(status_code=404, detail="Level not found")
 
-    progress = progress_store.player_progress(client_id, room_code)
-    solved_count = len(progress.solved_levels)
-    is_unlocked = solved_count >= level.required_solved or normalized in progress.solved_levels
-    if not is_unlocked:
-        needed = max(0, level.required_solved - solved_count)
-        raise HTTPException(status_code=403, detail=f"Level locked. Solve {needed} more level(s) first.")
-
     prompt = GAME_LEVEL_PROMPTS.get(normalized)
     if not prompt:
         raise HTTPException(status_code=404, detail="Level prompt not found")
@@ -1644,11 +1637,7 @@ def submit_game_answer(payload: SubmitAnswerRequest) -> SubmitAnswerResponse:
         raise HTTPException(status_code=403, detail="Invalid or expired challenge token. Re-open the level and submit again.")
 
     progress = progress_store.player_progress(payload.client_id, payload.room_code)
-    solved_count = len(progress.solved_levels)
     already_solved = level_id in progress.solved_levels
-    if not already_solved and solved_count < level.required_solved:
-        needed = max(0, level.required_solved - solved_count)
-        raise HTTPException(status_code=403, detail=f"Level locked. Solve {needed} more level(s) first.")
 
     if level_id == "doomdada":
         current = doomdada_guard.status(payload.client_id)

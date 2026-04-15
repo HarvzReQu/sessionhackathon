@@ -2578,7 +2578,7 @@ Console: waiting for input</div>
       }
 
       levelsGridEl.innerHTML = levels.map((lvl) => `
-        <article class="card level-${lvl.id} ${selectedLevelId === lvl.id ? "active" : ""} ${solved.has(lvl.id) ? "done" : ""} ${(lvl.unlocked === false || (lvl.id === "doomdada" && isDoomBlocked())) ? "blocked" : ""}">
+        <article class="card level-${lvl.id} ${selectedLevelId === lvl.id ? "active" : ""} ${solved.has(lvl.id) ? "done" : ""} ${(lvl.id === "doomdada" && isDoomBlocked()) ? "blocked" : ""}">
           <div class="card-top">
             <h3>${lvl.title}</h3>
             <div class="points">${lvl.points} pts</div>
@@ -2588,12 +2588,11 @@ Console: waiting for input</div>
             <span>Tier: ${String(lvl.difficulty_tier || "n/a").toUpperCase()}</span>
             <span>${lvl.id.toUpperCase()}</span>
             ${solved.has(lvl.id) ? '<span class="chip-solved">Solved</span>' : '<span>Unsolved</span>'}
-            ${lvl.unlocked === false ? '<span class="chip-locked">LOCKED</span>' : ''}
             ${lvl.id === "doomdada" && isDoomBlocked() ? `<span class="chip-locked">BLOCK ${formatCooldownClock(getDoomCooldownRemainingMs())}</span>` : ""}
           </div>
-          <p>${lvl.unlocked === false ? (lvl.unlock_hint || `Locked until ${lvl.required_solved} solved levels.`) : (lvl.id === "doomdada" && isDoomBlocked() ? `[ BLOCK ] Locked for ${formatCooldownClock(getDoomCooldownRemainingMs())}` : lvl.description)}</p>
+          <p>${lvl.id === "doomdada" && isDoomBlocked() ? `[ BLOCK ] Locked for ${formatCooldownClock(getDoomCooldownRemainingMs())}` : lvl.description}</p>
           <div style="margin-top:10px;">
-            <button class="btn alt" data-level-id="${lvl.id}" ${(lvl.unlocked === false || (lvl.id === "doomdada" && isDoomBlocked())) ? "disabled" : ""}>${lvl.unlocked === false ? "Locked" : (lvl.id === "doomdada" && isDoomBlocked() ? `[ BLOCK ] ${formatCooldownClock(getDoomCooldownRemainingMs())}` : `${solved.has(lvl.id) ? "Replay" : "Start"} ${lvl.title}`)}</button>
+            <button class="btn alt" data-level-id="${lvl.id}" ${(lvl.id === "doomdada" && isDoomBlocked()) ? "disabled" : ""}>${lvl.id === "doomdada" && isDoomBlocked() ? `[ BLOCK ] ${formatCooldownClock(getDoomCooldownRemainingMs())}` : `${solved.has(lvl.id) ? "Replay" : "Start"} ${lvl.title}`}</button>
           </div>
         </article>
       `).join("");
@@ -2983,6 +2982,12 @@ Console: waiting for input</div>
           renderSolvedBoard();
           renderPerformanceBoard();
           updateChallengeProgress();
+          // Re-fetch levels so unlocked status is refreshed after solving
+          try {
+            const roomCode = currentRoomCode() || "";
+            const lvlRes = await fetch(apiUrl(`/api/game/levels?client_id=${encodeURIComponent(clientId)}&room_code=${encodeURIComponent(roomCode)}`));
+            if (lvlRes.ok) levels = await lvlRes.json();
+          } catch { /* keep stale on network error */ }
           renderLevels();
         } else {
           streakCount = typeof data.streak_count === "number" ? data.streak_count : streakCount;

@@ -520,6 +520,18 @@
       </div>
     </section>
 
+    <section class="panel">
+      <div class="head"><h2>Team Leaderboard</h2></div>
+      <div class="body">
+        <table style="width:100%;margin-bottom:8px;">
+          <thead>
+            <tr><th>Rank</th><th>Team</th><th>Score</th><th>Solves</th><th>Members</th></tr>
+          </thead>
+          <tbody id="teamLeaderboardTable"><tr><td colspan="5">Waiting for team data...</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
     <section id="finalResultsPanel" class="panel final-results hidden">
       <div class="head"><h2>Final Results Leaderboard</h2></div>
       <div class="body">
@@ -949,6 +961,8 @@
       return out;
     }
 
+    const previousScores = new Map();
+
     function paintClassroomTable(players) {
       latestClassroomPlayers = players;
       const query = classroomSearch.trim().toLowerCase();
@@ -967,8 +981,8 @@
       }
       if (!sortedRows.length) {
         classroomTableEl.innerHTML = query
-          ? '<tr><td colspan="8">No matches for current search.</td></tr>'
-          : '<tr><td colspan="8">Waiting for rank 4 and below.</td></tr>';
+          ? '<tr><td colspan="9">No matches for current search.</td></tr>'
+          : '<tr><td colspan="9">Waiting for rank 4 and below.</td></tr>';
         classroomPrevBtn.disabled = true;
         classroomNextBtn.disabled = true;
         classroomPageInfoEl.textContent = "Page 1/1 | Showing 0-0 of 0";
@@ -978,13 +992,20 @@
       const pageRows = sortedRows.slice(start, start + classroomPageSize);
       classroomTableEl.innerHTML = pageRows.map((p) => {
         const rank = p._restRank;
-        const rowClass = "rank-rest";
+        const prev = previousScores.get(p.player_name);
+        const delta = (prev !== undefined && p.score !== prev) ? p.score - prev : 0;
+        const deltaHtml = delta > 0
+          ? `<span style="color:#22c55e;font-weight:bold;margin-left:4px;">+${delta}</span>`
+          : delta < 0
+            ? `<span style="color:#f87171;font-weight:bold;margin-left:4px;">${delta}</span>`
+            : "";
+        const rowHighlight = delta !== 0 ? ' style="background:rgba(34,197,94,0.08);transition:background 1s;"' : '';
         return `
-        <tr class="${rowClass}">
+        <tr class="rank-rest"${rowHighlight}>
           <td><span class="rank-rest">#${rank}</span></td>
           <td>${p.player_name}</td>
           <td>${p.team || "-"}</td>
-          <td>${p.score}</td>
+          <td>${p.score}${deltaHtml}</td>
           <td>${p.solved_count}</td>
           <td>${p.accuracy}% (${p.correct_submissions}/${p.total_submissions})</td>
           <td>${(p.last_level_id || "-").toString().toUpperCase()}</td>
@@ -993,53 +1014,9 @@
         </tr>
       `;
       }).join("");
-    // --- TEAM LEADERBOARD ---
-    const teamLeaderboardPanel = document.createElement("section");
-    teamLeaderboardPanel.className = "panel team-leaderboard";
-    teamLeaderboardPanel.innerHTML = `
-      <div class="head"><h2>Team Leaderboard</h2></div>
-      <div class="body">
-        <table style="width:100%;margin-bottom:8px;">
-          <thead>
-            <tr><th>Rank</th><th>Team</th><th>Score</th><th>Solves</th><th>Members</th></tr>
-          </thead>
-          <tbody id="teamLeaderboardTable"><tr><td colspan="5">Loading...</td></tr></tbody>
-        </table>
-      </div>
-    `;
-    document.body.insertBefore(teamLeaderboardPanel, document.body.firstChild.nextSibling);
 
-    async function refreshTeamLeaderboard() {
-      if (!roomCode) return;
-      const table = document.getElementById("teamLeaderboardTable");
-      table.innerHTML = '<tr><td colspan="5">Loading...</td></tr>';
-      try {
-        const res = await fetch(apiUrl(`/api/game/classroom/team-leaderboard?room_code=${encodeURIComponent(roomCode)}`));
-        if (!res.ok) {
-          table.innerHTML = '<tr><td colspan="5">Failed to load team leaderboard.</td></tr>';
-          return;
-        }
-        const teams = await res.json();
-        if (!teams.length) {
-          table.innerHTML = '<tr><td colspan="5">No teams found.</td></tr>';
-          return;
-        }
-        table.innerHTML = teams.map((t) => `
-          <tr>
-            <td>#${t.rank}</td>
-            <td>${t.team}</td>
-            <td>${t.score}</td>
-            <td>${t.solves}</td>
-            <td>${Array.isArray(t.members) ? t.members.join(", ") : "-"}</td>
-          </tr>
-        `).join("");
-      } catch {
-        table.innerHTML = '<tr><td colspan="5">Network error.</td></tr>';
-      }
-    }
-
-    setInterval(refreshTeamLeaderboard, 8000);
-    refreshTeamLeaderboard();
+      // update score snapshot for next tick
+      players.forEach((p) => previousScores.set(p.player_name, p.score));
 
       classroomPrevBtn.disabled = classroomPage <= 1;
       classroomNextBtn.disabled = classroomPage >= totalPages;
@@ -1075,7 +1052,10 @@
         if (!p) {
           return `<div class="podium-card ${slot.cls}"><span class="place">${slot.label}</span><div class="name">Waiting...</div><div class="meta">No player in this slot yet.</div></div>`;
         }
-        return `<div class="podium-card ${slot.cls}"><span class="place">${slot.label}</span><div class="name">${p.player_name}</div><div class="meta">Score: ${p.score}\nSolved: ${p.solved_count}\nCurrent: ${(p.last_level_id || "-").toString().toUpperCase()}\nInterval: ${formatInterval(p.last_activity)}</div></div>`;
+        const prev = previousScores.get(p.player_name);
+        const delta = (prev !== undefined && p.score !== prev) ? p.score - prev : 0;
+        const deltaHtml = delta > 0 ? ` <span style="color:#22c55e;font-weight:bold;">+${delta}</span>` : "";
+        return `<div class="podium-card ${slot.cls}${delta > 0 ? '" style="outline:2px solid #22c55e' : ''}"><span class="place">${slot.label}</span><div class="name">${p.player_name}${deltaHtml}</div><div class="meta">Score: ${p.score}\nSolved: ${p.solved_count}\nCurrent: ${(p.last_level_id || "-").toString().toUpperCase()}\nInterval: ${formatInterval(p.last_activity)}</div></div>`;
       }).join("");
     }
 
@@ -1617,6 +1597,35 @@
       }
       decideJoinRequest(requestId, action === "approve");
     });
+    async function refreshTeamLeaderboard() {
+      if (!roomCode) return;
+      const table = document.getElementById("teamLeaderboardTable");
+      if (!table) return;
+      try {
+        const res = await fetch(apiUrl(`/api/game/classroom/team-leaderboard?room_code=${encodeURIComponent(roomCode)}`));
+        if (!res.ok) {
+          table.innerHTML = '<tr><td colspan="5">Failed to load team leaderboard.</td></tr>';
+          return;
+        }
+        const teams = await res.json();
+        if (!teams.length) {
+          table.innerHTML = '<tr><td colspan="5">No teams yet.</td></tr>';
+          return;
+        }
+        table.innerHTML = teams.map((t) => `
+          <tr>
+            <td>#${t.rank}</td>
+            <td>${t.team}</td>
+            <td>${t.score}</td>
+            <td>${t.solves}</td>
+            <td>${Array.isArray(t.members) ? t.members.join(", ") : "-"}</td>
+          </tr>
+        `).join("");
+      } catch {
+        table.innerHTML = '<tr><td colspan="5">Network error.</td></tr>';
+      }
+    }
+
     if (!roomCode) {
       loadExportMeta("");
     }
@@ -1625,6 +1634,7 @@
     setInterval(refreshClassroomSummary, 3000);
     setInterval(refreshClassroomAnalytics, 5000);
     setInterval(refreshSessionReport, 7000);
+    setInterval(refreshTeamLeaderboard, 5000);
     refreshJoinRequests();
     refreshClassroomSummary();
     refreshClassroomAnalytics();
