@@ -1331,8 +1331,6 @@ def register_player_session(payload: SessionHeartbeatRequest) -> dict[str, str]:
             raise HTTPException(status_code=404, detail="Room code not found")
         if room.lobby_status == "ended":
             raise HTTPException(status_code=423, detail="Game has ended. Session updates are closed.")
-        if not store.is_joined_player(room_code, payload.player_name, payload.client_id):
-            raise HTTPException(status_code=403, detail="Player must join this room before activity is tracked")
     progress_store.heartbeat(payload.client_id, payload.player_name, payload.room_code)
     return {"message": "Session updated"}
 
@@ -1622,10 +1620,6 @@ def submit_game_answer(payload: SubmitAnswerRequest) -> SubmitAnswerResponse:
             raise HTTPException(status_code=404, detail="Room code not found")
         if room.lobby_status == "ended":
             raise HTTPException(status_code=423, detail="Game has ended. Submissions are closed.")
-        if room.lobby_status != "live":
-            raise HTTPException(status_code=423, detail="Game is not live yet.")
-        if not store.is_joined_player(room_code, player_name, payload.client_id):
-            raise HTTPException(status_code=403, detail="Player must join this room before submitting answers")
 
     level_id = payload.level_id.strip().lower()
     level = LEVEL_BY_ID.get(level_id)
